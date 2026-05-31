@@ -1,0 +1,47 @@
+[project]
+name = "polaris-desk"
+version = "0.1.0"
+description = "Polaris Desk — 台股法遵與投研 Agent-Augmented Research Workflow"
+requires-python = ">=3.11"
+
+dependencies = [
+    # 編排
+    "langgraph>=0.6",
+    "langchain-core>=0.3",
+    # 設定
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "python-dotenv>=1.0",
+    # LLM / 檢索
+    "google-genai>=1.0",          # Gemini 新版 SDK（取代已淘汰的 google-generativeai）
+    "cohere>=5.5",                 # Rerank
+    "tavily-python>=0.3",          # Deep Research 網路搜尋
+    "rank-bm25>=0.2",              # BM25 關鍵字檢索
+    # 本地向量庫（pgvector）
+    "psycopg[binary]>=3.1",
+    "pgvector>=0.3",
+    # 雲端向量庫（BigQuery）
+    "google-cloud-bigquery>=3.25",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/polaris"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

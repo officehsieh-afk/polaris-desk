@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Polaris Desk — Spec Kit 導讀</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Noto+Serif+TC:wght@400;600;900&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F4ECDB; --paper2:#EFE4CE; --card:#FBF6EA; --ink:#2E2A22; --ink2:#5C5343;
+    --gold:#C99B3F; --gold-l:#E8C167; --line:#D8C9A8;
+    --r1:#C99B3F; --r2:#2E3B5F; --r3:#4A88A8; --r4:#6B8E5A; --r5:#B45959; --r6:#7A4A7B; --r7:#C97742;
+    --red:#B33B3B;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Noto Sans TC",system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 22px}
+  h1,h2,h3,.disp{font-family:"Fraunces","Noto Serif TC",serif}
+  code,.mono{font-family:"JetBrains Mono",monospace}
+  a{color:var(--r2)}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:20;background:rgba(244,236,219,.92);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 22px}
+  nav .brand{font-family:"Fraunces",serif;font-weight:900;color:var(--gold);margin-right:auto;letter-spacing:.3px}
+  nav a{color:var(--ink2);text-decoration:none;font-size:13.5px;padding:5px 10px;border-radius:999px}
+  nav a:hover{background:var(--paper2);color:var(--ink)}
+
+  /* HERO */
+  header.hero{padding:64px 0 30px;border-bottom:2px solid var(--gold)}
+  .kicker{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:3px;
+    text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+  .hero h1{font-size:clamp(34px,6vw,60px);line-height:1.04;margin:0 0 14px;font-weight:900}
+  .hero .star{color:var(--gold)}
+  .hero p{font-size:17px;color:var(--ink2);max-width:62ch;margin:0}
+  .meta{margin-top:20px;font-family:"JetBrains Mono",monospace;font-size:12.5px;color:var(--ink2)}
+
+  section{padding:46px 0;border-bottom:1px solid var(--line)}
+  section h2{font-size:clamp(24px,3.6vw,34px);margin:0 0 6px;font-weight:900}
+  .sub{color:var(--ink2);margin:0 0 26px;font-size:15px}
+  .sectag{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:2px;
+    color:var(--gold);text-transform:uppercase}
+
+  /* generic card grid */
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px}
+  .card h3{margin:0 0 8px;font-size:18px}
+
+  /* ruler chips */
+  .ruler{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .chip{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--gold);
+    border-radius:10px;padding:12px 14px}
+  .chip b{display:block;font-family:"Fraunces",serif;font-size:15px}
+  .chip span{font-size:13px;color:var(--ink2)}
+
+  /* constitution */
+  .law{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 20px;margin-bottom:12px;border-left:5px solid var(--gold)}
+  .law.red{border-left-color:var(--red);background:#fbeeea}
+  .law h3{margin:0 0 4px;font-size:17px}
+  .law h3 .rn{font-family:"JetBrains Mono",monospace;color:var(--gold);margin-right:8px}
+  .law.red h3 .rn{color:var(--red)}
+  .law p{margin:0;font-size:14.5px;color:var(--ink2)}
+  .badge{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:10.5px;
+    background:var(--red);color:#fff;padding:1px 7px;border-radius:999px;vertical-align:middle;margin-left:6px}
+
+  /* scenarios */
+  .story{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px;margin-bottom:12px}
+  .story .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .story h3{margin:0;font-size:18px}
+  .pri{font-family:"JetBrains Mono",monospace;font-size:11px;padding:2px 9px;border-radius:999px;color:#fff}
+  .p1{background:var(--r4)} .p2{background:var(--r7)}
+  .gwt{font-size:13.5px;color:var(--ink2);background:var(--paper2);border-radius:8px;padding:8px 12px;margin-top:8px}
+  .gwt b{color:var(--ink)}
+
+  /* SC list */
+  .sc{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .sc div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 14px;font-size:14px}
+  .sc .n{font-family:"JetBrains Mono",monospace;color:var(--gold);font-weight:600;font-size:12px}
+
+  /* gates */
+  .gates{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .gate{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .gate .d{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--gold)}
+  .gate .g{font-family:"Fraunces",serif;font-weight:900;font-size:22px;margin:2px 0}
+  .gate small{font-size:12px;color:var(--ink2);display:block;line-height:1.4}
+
+  /* role cards */
+  .roles{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .role{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;border-top:5px solid var(--gold)}
+  .role[data-r="1"]{border-top-color:var(--r1)} .role[data-r="2"]{border-top-color:var(--r2)}
+  .role[data-r="3"]{border-top-color:var(--r3)} .role[data-r="4"]{border-top-color:var(--r4)}
+  .role[data-r="5"]{border-top-color:var(--r5)} .role[data-r="6"]{border-top-color:var(--r6)}
+  .role[data-r="7"]{border-top-color:var(--r7)}
+  .role .rh{display:flex;align-items:baseline;gap:9px;margin-bottom:6px}
+  .role .rn{font-family:"JetBrains Mono",monospace;font-weight:600;color:#fff;padding:1px 8px;border-radius:6px;font-size:12px}
+  .role[data-r="1"] .rn{background:var(--r1)} .role[data-r="2"] .rn{background:var(--r2)}
+  .role[data-r="3"] .rn{background:var(--r3)} .role[data-r="4"] .rn{background:var(--r4)}
+  .role[data-r="5"] .rn{background:var(--r5)} .role[data-r="6"] .rn{background:var(--r6)}
+  .role[data-r="7"] .rn{background:var(--r7)}
+  .role .rt{font-family:"Fraunces",serif;font-weight:600;font-size:16px}
+  .role .mission{font-size:13.5px;color:var(--ink2);margin:0 0 10px}
+  .role .lbl{font-family:"JetBrains Mono",monospace;font-size:10.5px;letter-spacing:1px;color:var(--gold);text-transform:uppercase;margin-top:8px}
+  .role ul{margin:4px 0 0;padding-left:18px;font-size:13px}
+  .role ul li{margin:2px 0}
+  .role .dep{font-size:12.5px;color:var(--ink2);margin-top:8px}
+
+  /* speckit cmds */
+  .cmds{background:#23252b;border-radius:14px;padding:18px 20px;color:#e8e6df}
+  .cmds .mono{font-size:13px;display:block;margin:3px 0;color:#cfe3ee}
+  .cmds .c{color:var(--gold-l)}
+  .cmds small{color:#9c9c9c}
+
+  footer{padding:40px 0 70px;color:var(--ink2);font-size:13px;text-align:center}
+  .nc{color:var(--red);font-weight:700}
+  @media(max-width:760px){
+    .g2,.g3,.ruler,.sc,.roles,.gates{grid-template-columns:1fr}
+    nav .brand{width:100%;margin-bottom:4px}
+  }
+</style>
+</head>
+<body>
+
+<nav><div class="wrap">
+  <span class="brand">✦ Polaris Desk · Spec Kit</span>
+  <a href="#why">為什麼</a>
+  <a href="#law">憲法</a>
+  <a href="#story">場景</a>
+  <a href="#sc">成功標準</a>
+  <a href="#gate">閘門</a>
+  <a href="#roles">角色</a>
+  <a href="#cmd">指令</a>
+</div></nav>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker">Spec-Driven Development · GitHub Spec Kit v0.8.12</div>
+  <h1>把 4 週計畫，<br>變成<span class="star"> 可驗收</span>的規格</h1>
+  <p>這份導讀帶你看懂 Polaris Desk 的 Spec Kit 文件：每條任務都有<b>可量測的完成標準</b>、明確依賴、對應閘門。先讀這頁（約 10 分），再翻你自己的角色 spec。</p>
+  <div class="meta">產出 2026-05-31 · 對應 PRD v1.1 + 4 週航程作戰計畫 · 檔案在 03_規格書_PRD/spec-kit/</div>
+</div></header>
+
+<section id="why"><div class="wrap">
+  <div class="sectag">01 · The Ruler</div>
+  <h2>我們用什麼尺在量</h2>
+  <p class="sub">Spec Kit 的核心精神：需求要「可驗收」。每條任務都要過下面 6 關，否則就是寫得不夠清楚。</p>
+  <div class="ruler">
+    <div class="chip"><b>可量測</b><span>完成 = 數字 / 可勾的事實，不是「polish / 穩定 / review」</span></div>
+    <div class="chip"><b>可驗收</b><span>用 Given / When / Then 或一個門檻說「怎樣算過」</span></div>
+    <div class="chip"><b>可追溯</b><span>對應到某個 FR / NFR / Go-No-Go 閘</span></div>
+    <div class="chip"><b>一致</b><span>A 說靠 B，B 也真的有交給 A，時間對得上</span></div>
+    <div class="chip"><b>無缺口</b><span>沒有「沒人認領」的工作</span></div>
+    <div class="chip"><b>標出未決</b><span>沒拍板的標 <code>[NEEDS CLARIFICATION]</code> + 到期 + owner</span></div>
+  </div>
+</div></section>
+
+<section id="law"><div class="wrap">
+  <div class="sectag">02 · Constitution</div>
+  <h2>專題憲法 — 不可違反</h2>
+  <p class="sub">凌駕所有任務。任何 user story / PR 違反即 <b>No-Go</b>。（repo 內權威版：<code>.specify/memory/constitution.md</code>）</p>
+
+  <div class="law red"><h3><span class="rn">I.</span>合規紅線 NFR-031<span class="badge">NON-NEGOTIABLE</span></h3>
+    <p>新聞 / 投研功能只描述、標證據、標矛盾，<b>不得產出任何買賣建議</b>（投顧執照風險）。目標：130 題 + 4 場景 + 紅隊題中買賣建議 = 0。</p></div>
+  <div class="law red"><h3><span class="rn">II.</span>引用接地 Grounding<span class="badge">NON-NEGOTIABLE</span></h3>
+    <p>每句結論 / 每個數字都要可追溯來源（頁碼 / 出處 / 財報欄位）。無源不輸出；來源矛盾就標出矛盾、不替使用者下結論。</p></div>
+  <div class="law"><h3><span class="rn">III.</span>本地優先 · 金鑰安全</h3>
+    <p>開發先本地 pgvector 省雲費（Q-03）；金鑰只放 <code>.env</code> / Secret Manager，永不 commit、不貼群組、不丟 Drive（Q-10）。</p></div>
+  <div class="law"><h3><span class="rn">IV.</span>Eval 即品質門檻</h3>
+    <p>好不好以 Ragas + 三方 Judge 客觀分數為準。CP ≥ 0.85、Faithfulness ≥ 0.90、AR ≥ 0.85；130 題達標 ≥ 80%（G3）。三方 Judge 只在閘門跑、CI 用便宜模型（省 token）。</p></div>
+  <div class="law"><h3><span class="rn">V.</span>Demo 可重現 + 離線備援</h3>
+    <p>Demo 跑雲端，但必有「本地 pgvector + 預錄影片」Plan B；同場景跑 10 次一致；斷網 &lt; 30 秒切備援。</p></div>
+  <div class="law"><h3><span class="rn">VI.</span>最新技術棧</h3>
+    <p><code>google-genai</code> 新 SDK + <code>gemini-3-pro/flash-preview</code> + <code>gemini-embedding-2</code>（768/cosine）；<b>非</b>舊版 <code>google-generativeai</code>。Rerank 用 Cohere <code>rerank-v4.0</code>。</p></div>
+</div></section>
+
+<section id="story"><div class="wrap">
+  <div class="sectag">03 · User Scenarios</div>
+  <h2>4 個 Demo 場景 = 4 個 User Story</h2>
+  <p class="sub">具體問句由 R1 在 W2 Day 6–8 細寫（草稿見 <code>_demo場景草稿_給R1.md</code>）。每個場景都受 NFR-031 約束。</p>
+
+  <div class="story"><div class="top"><h3>US1 — 單一公司投研摘要</h3><span class="pri p1">P1</span></div>
+    <div class="gwt"><b>Given</b> 已入庫某公司某季法說稿，<b>When</b> 問「該季營運重點」，<b>Then</b> 回 ≥ 3 點摘要、每點帶可點擊跳轉來源、且無買賣建議。問未入庫期間則答「資料未涵蓋」、不編造。</div></div>
+
+  <div class="story"><div class="top"><h3>US2 — 同業比較（Deep Research Agent 主秀）</h3><span class="pri p1">P1</span></div>
+    <div class="gwt"><b>Given</b> A、B 兩公司已入庫，<b>When</b> 問「比較毛利率」，<b>Then</b> 並列數字 + 各自來源 + 一句中性差異描述。Deep Research ≤ 6 ReAct 迴圈、≥ 3 引用、可溯源。</div></div>
+
+  <div class="story"><div class="top"><h3>US3 — 多模態圖表問答（ColPali）</h3><span class="pri p2">P2 · 可砍</span></div>
+    <div class="gwt"><b>Given</b> 含圖表的法說 PDF，<b>When</b> 問圖表數據，<b>Then</b> 正確回答 + 指出「第 N 頁圖表」。門檻：圖表題命中率 ≥ 70%（否則砍，記 TD-01）。G3 ColPali 失敗則連本場景砍。</div></div>
+
+  <div class="story"><div class="top"><h3>US4 — 跨產業營收拆解</h3><span class="pri p1">P1</span></div>
+    <div class="gwt"><b>Given</b> 多產業公司已標 schema，<b>When</b> 問「各事業群營收占比」，<b>Then</b> 回分產業拆解 + 來源。附加產業門檻依 AQ-08（建議 10–15%）。有獨立 10 題 eval（AQ-06）。</div></div>
+
+  <div class="story"><div class="top"><h3>跨場景亮點 — Watchdog 事件驅動合規</h3><span class="pri p1">真 Agent #2</span></div>
+    <div class="gwt"><b>Given</b> 一則模擬 MOPS 公告，<b>When</b> 事件觸發，<b>Then</b> Watchdog 在 Alert Inbox 產出合規判斷摘要，且不出買賣建議。</div></div>
+</div></section>
+
+<section id="sc"><div class="wrap">
+  <div class="sectag">04 · Success Criteria</div>
+  <h2>可量測的成功標準</h2>
+  <p class="sub">技術無關、可被驗證的數字。這些就是「做完了沒」的客觀答案。</p>
+  <div class="sc">
+    <div><span class="n">SC-001</span> Ragas：CP ≥ 0.85 · Faithfulness ≥ 0.90 · AR ≥ 0.85</div>
+    <div><span class="n">SC-002</span> 130 題 Eval 達標 ≥ 80%（場景 4 另有 10 題）</div>
+    <div><span class="n">SC-003</span> 130 題 + 4 場景 + 紅隊題 <b>買賣建議 = 0</b></div>
+    <div><span class="n">SC-004</span> 4 場景在雲端可重現（同場景跑 10 次一致）</div>
+    <div><span class="n">SC-005</span> Demo 5 分鐘無斷點；斷網 &lt; 30 秒切備援</div>
+    <div><span class="n">SC-006</span> LLMLingua 量到 token 省 ≥ 50%（目標 ~60%）</div>
+    <div><span class="n">SC-007</span> 結論句引用覆蓋率 = 100%</div>
+  </div>
+</div></section>
+
+<section id="gate"><div class="wrap">
+  <div class="sectag">05 · Milestones</div>
+  <h2>4 道 Go / No-Go 閘</h2>
+  <p class="sub">到了閘全員停下驗收；沒過就啟動降級，不硬撐。</p>
+  <div class="gates">
+    <div class="gate"><div class="d">DAY 5</div><div class="g">G1</div><small>Ontology v1 凍 + 100 份入庫<b>本地 pgvector</b></small></div>
+    <div class="gate"><div class="d">DAY 10</div><div class="g">G2</div><small>e2e + Ragas 上線 + <b>BigQuery 煙測</b>(Q-03)</small></div>
+    <div class="gate"><div class="d">DAY 17</div><div class="g">G3</div><small>ColPali/LLMLingua + <b>Eval ≥ 80%</b> + 2 Agent</small></div>
+    <div class="gate"><div class="d">DAY 24</div><div class="g">G4</div><small>4 場景<b>雲端</b>可重現 + 離線備援</small></div>
+    <div class="gate" style="border-color:var(--gold)"><div class="d">DAY 28</div><div class="g" style="color:var(--gold)">Demo</div><small>5 分鐘無斷點，斷網切預錄</small></div>
+  </div>
+</div></section>
+
+<section id="roles"><div class="wrap">
+  <div class="sectag">06 · Roles</div>
+  <h2>7 個角色 spec（重點摘要）</h2>
+  <p class="sub">完整版見各 <code>R{n}_..._spec.md</code>。下面是每人的 Mission + 最關鍵的可驗收標準 + 主要依賴。</p>
+  <div class="roles">
+
+    <div class="role" data-r="1"><div class="rh"><span class="rn">R1</span><span class="rt">PM · 產品 &amp; Demo</span></div>
+      <p class="mission">把「Demo 5 分鐘演什麼」想清楚 + 治理進度與決策 + 主持閘門 / 彩排。</p>
+      <div class="lbl">可驗收</div><ul><li>4 場景細稿（問句 + 期望輸出 + 亮點 + NFR-031 自查）</li><li>G3 每日風險看板；5 分鐘腳本定稿</li></ul>
+      <div class="dep">下游：<b>全員</b>等你的 Demo 故事 + 範圍定案。</div></div>
+
+    <div class="role" data-r="2"><div class="rh"><span class="rn">R2</span><span class="rt">架構師 · Tech Lead</span></div>
+      <p class="mission">LangGraph 編排 + Deep Research Agent + W4 主導上雲。</p>
+      <div class="lbl">可驗收</div><ul><li>Deep Research v1：≤ 6 迴圈 / ≥ 3 引用 / 可溯源 / 0 買賣建議</li><li>G4 在雲端驗收 4 場景可重現</li></ul>
+      <div class="dep">上游：R3 節點、R4 資料；下游：所有節點掛你的圖。</div></div>
+
+    <div class="role" data-r="3"><div class="rh"><span class="rn">R3</span><span class="rt">Agent 工程師</span></div>
+      <p class="mission">4-way 檢索 + Writer 逐句引用 + Watchdog Agent（最忙 +3.5 人天）。</p>
+      <div class="lbl">可驗收</div><ul><li>答案逐句有引用、數字有來源；4 路到位</li><li>Watchdog 收事件→產合規判斷、0 買賣建議</li></ul>
+      <div class="dep">🛟 降級：吃緊先保 Deep Research，Watchdog 降 demo-only。</div></div>
+
+    <div class="role" data-r="4"><div class="rh"><span class="rn">R4</span><span class="rt">資料工程師</span></div>
+      <p class="mission">Ingestion + 向量庫(pgvector→BigQuery) + ColPali + 新聞第 5 路。</p>
+      <div class="lbl">可驗收</div><ul><li>100 份入本地 pgvector、可被查到；BigQuery 煙測一致(Q-03)</li><li>ColPali 圖表題命中率 ≥ 70% 才採用(TD-01)</li></ul>
+      <div class="dep">注意 pgvector 三條雷（見 init_pgvector.sql 註解）。</div></div>
+
+    <div class="role" data-r="5"><div class="rh"><span class="rn">R5</span><span class="rt">Eval Lead</span></div>
+      <p class="mission">Ragas + 三方 Judge + 130 題衝 ≥ 80%（G3 硬門檻）。</p>
+      <div class="lbl">可驗收</div><ul><li>130 題達標 ≥ 80%；CP/F/AR 達標</li><li>三方 Judge 只在閘門跑、CI 用 1 個 Flash 省 token</li></ul>
+      <div class="dep">下游：R2/R3 靠你的「不及格題清單」修。</div></div>
+
+    <div class="role" data-r="6"><div class="rh"><span class="rn">R6</span><span class="rt">金融品質工程師</span></div>
+      <p class="mission">台股 Ontology + 金融事實校對 + NFR-031 紅隊（W1 最吃重）。</p>
+      <div class="lbl">可驗收</div><ul><li>Ontology v1 凍（20 家 + 多產業）；每天校 ≥ 10 題</li><li>抽查 ≥ 30 題財務錯誤率 = 0；買賣建議 = 0</li></ul>
+      <div class="dep">下游：R4 灌庫、R5 用題、R3 合規規則靠你。</div></div>
+
+    <div class="role" data-r="7"><div class="rh"><span class="rn">R7</span><span class="rt">Demo &amp; 全端</span></div>
+      <p class="mission">前端 + 引用 UI + ReAct trace + W4 前端上雲(Vercel) + 備援影片。</p>
+      <div class="lbl">可驗收</div><ul><li>引用點擊跳轉正確率 100%；手機 RWD 無跑版</li><li>4 場景截圖過 R1 簽核（= demo 等級定義）</li></ul>
+      <div class="dep">與 R3 約定 Watchdog 事件 mock JSON 契約(W2)。</div></div>
+
+  </div>
+</div></section>
+
+<section id="cmd"><div class="wrap">
+  <div class="sectag">07 · Spec Kit Commands</div>
+  <h2>給工程組：repo 裡的 /speckit 指令</h2>
+  <p class="sub">starter repo 已跑過 <code>specify init</code>，在 Claude Code / Cursor 開 repo 即可用。憲法已寫進 <code>.specify/memory/constitution.md</code>。</p>
+  <div class="cmds">
+    <span class="mono"><span class="c">/speckit-constitution</span> — 建立 / 更新專題原則（已預載我們的憲法）</span>
+    <span class="mono"><span class="c">/speckit-specify</span> — 為某功能建 baseline 規格</span>
+    <span class="mono"><span class="c">/speckit-plan</span> — 產技術實作計畫</span>
+    <span class="mono"><span class="c">/speckit-tasks</span> — 產可執行任務清單</span>
+    <span class="mono"><span class="c">/speckit-implement</span> — 執行實作</span>
+    <span class="mono"><small>選用：</small><span class="c">/speckit-clarify</span> · <span class="c">/speckit-analyze</span> · <span class="c">/speckit-checklist</span></span>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  Polaris Desk · Spec Kit 導讀 · 2026-05-31<br>
+  <span class="nc">🔴 不能說買賣建議（NFR-031）</span> ｜ 🔑 金鑰別外流 ｜ 引用接地 ｜ 北辰領航 ⛵
+</div></footer>
+
+</body>
+</html>

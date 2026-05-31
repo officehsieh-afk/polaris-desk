@@ -1,0 +1,41 @@
+# ⚠️ 金鑰 / 本地設定 — 永不 commit
+.env
+.env.*
+!.env.example
+*.key
+*-service-account.json
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node / 前端
+node_modules/
+.next/
+dist/
+build/
+
+# 資料 / 暫存（法說會 PDF、向量等不進 git）
+data/
+*.pdf
+*.parquet
+*.duckdb
+*.sqlite
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Coding agent 本地設定（可能含憑證）— 不 commit
+# 註：.claude/skills/ 的 spec-kit 指令「要」保留共用，故不整個忽略 .claude/
+.claude/settings.local.json
+.claude/*.local.json
