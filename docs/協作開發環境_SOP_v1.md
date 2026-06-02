@@ -1,10 +1,10 @@
-# Polaris Desk 協作開發環境 SOP v1.1
+# Polaris Desk 協作開發環境 SOP v1.2
 
 **目的**：讓 7 位成員在「同一份可信資料」上協同開發，且把成本壓在 GCP 免費額度內。
 **適用範圍**：4 週 MVP 開發期（W1 ~ W4）。
 **文件擁有者**：角色 1（PM）。**基礎設施擁有者**：角色 4（資料工程師）。
 
-> **基礎設施現況（2026-06-02）**：GCP 專案 **`polaris-desk-team`**（Project ID = `polaris-desk-team`）已由 PM 建立並連結計費帳戶。Phase 1（§3）以後由角色 4 執行，**從 §3.1 開始**。
+> **基礎設施現況（2026-06-02）**：GCP 專案 **`polaris-desk-team`** 已建立並連結計費。**§3.1–§3.4 已完成**：4 個 API 已開、`gs://polaris-desk-raw` 已建、`polaris_core`（空）已建、6 位成員權限已綁定（5 READER + R4 OWNER）。**剩下：§3.5 預算護欄、§4 ingestion（角色 4）、每人 §5 建自己的 scratch。**
 > **本團隊用個人 `@gmail.com` 帳號、無 Google Workspace 網域**，故權限以個別 `user:` 綁定（見 §3.4），不使用 Google Group。
 
 ---
@@ -59,7 +59,7 @@ polaris-desk-team
 
 ## 3. Phase 1：一次性基礎設施建置（角色 4 執行，約 30 分鐘）
 
-> **Phase 0 已完成**：專案 `polaris-desk-team` 與計費已就緒。角色 4 直接從 §3.1 開始。
+> **✅ §3.1–§3.4 已由 PM 於 2026-06-02 執行完成**（API 已開、bucket 與空 `polaris_core` 已建、6 位成員權限已綁定）。以下指令保留供查核與日後 Terraform 重建。**角色 4 從 §4 開始**（建表 + 向量索引 + ingestion）；§3.5 成本護欄仍待設定。
 
 以下用 `gcloud`／`bq` 指令快速建置。建議事後由角色 4 把同一份設定補成 Terraform（PRD §23.3）以便重建。
 
@@ -88,47 +88,44 @@ bq --location=asia-east1 mk --dataset \
   polaris-desk-team:polaris_core
 ```
 
-### 3.4 設定權限（IAM）— 個別 user 綁定
+### 3.4 設定權限（IAM）— 個別 user 綁定（✅ 已完成）
 
-本團隊無 Workspace 網域，**逐一綁定 7 位成員的 gmail**（不使用 Google Group）。
+本團隊無 Workspace 網域，**逐一綁定成員的 gmail**（不使用 Google Group）。專案 owner（PM）不需綁，owner 角色已涵蓋。
+
+**專案層角色用 `roles/bigquery.user`，不是 `jobUser`**：`jobUser` 只能跑查詢、**不能建 dataset**，會卡住 §5 步驟 2（每人要建自己的 scratch）。`bigquery.user` = 跑 job ＋ 建自己的 dataset，但**不會**自動取得任何 dataset 的資料讀取權（讀 `polaris_core` 仍要下方 dataset 層 READER）。
 
 ```bash
-# 把 7 位成員的 gmail 填進來
+# 把成員的 gmail 填進來（owner/PM 不用列）
 MEMBERS=(
   "member1@gmail.com"
-  "member2@gmail.com"
-  "member3@gmail.com"
-  "member4@gmail.com"
-  "member5@gmail.com"
-  "member6@gmail.com"
-  "member7@gmail.com"
+  # ...其餘成員
 )
 
-# 每人都能在 project 內跑查詢（執行 job 的權限）
+# 每人都能跑查詢 ＋ 建自己的 scratch dataset
 for m in "${MEMBERS[@]}"; do
   gcloud projects add-iam-policy-binding polaris-desk-team \
     --member="user:$m" \
-    --role="roles/bigquery.jobUser"
+    --role="roles/bigquery.user"
 done
 ```
 
-把每位成員設為 `polaris_core` 的唯讀 READER：
+把成員設為 `polaris_core` 的 dataset 層權限（一般成員 `READER`、角色 4 `OWNER`）：
 
 ```bash
 # 1. 匯出現有 access 設定（此檔含真實 email/ACL，已在 .gitignore，不要 commit）
 bq show --format=prettyjson polaris-desk-team:polaris_core > core_access.json
 
-# 2. 在 core_access.json 的 "access" 陣列，每位成員加一筆：
-#    { "role": "READER", "userByEmail": "member1@gmail.com" }
-#    { "role": "READER", "userByEmail": "member2@gmail.com" }
-#    ...（共 7 筆）
+# 2. 在 core_access.json 的 "access" 陣列加入：
+#    一般成員 → { "role": "READER", "userByEmail": "memberX@gmail.com" }
+#    角色 4   → { "role": "OWNER",  "userByEmail": "<R4 的 gmail>" }
 
 # 3. 套用
 bq update --source=core_access.json polaris-desk-team:polaris_core
 ```
 
+> **實際已綁定（2026-06-02）**：6 位成員專案層 `roles/bigquery.user`；`polaris_core` dataset → R4（吳瑾瑜）`OWNER`、其餘 5 位 `READER`、PM 為 creator/`OWNER`。
 > 應用程式用的 service account 採最小權限，金鑰存進 Secret Manager，**不進版控**。
-> 新增／移除成員時，記得同步更新 `bigquery.jobUser` 綁定與 `polaris_core` 的 READER 名單。
+> 新增／移除成員時，記得同步更新專案層 `bigquery.user` 綁定與 `polaris_core` 的 READER 名單。
 
 ### 3.5 設定成本護欄（重要）
 
@@ -283,7 +280,8 @@ bq query --use_legacy_sql=false \
 
 | 現象 | 最可能原因 | 第一步排查 |
 | --- | --- | --- |
-| 查 core 報 permission denied | 你的 gmail 沒被綁定，或缺 jobUser | 確認帳號已加入 §3.4 的 `user:` 名單（READER + jobUser） |
+| 查 core 報 permission denied | 你的 gmail 沒被綁定，或缺 `bigquery.user` | 確認帳號已加入 §3.4 的 `user:` 名單（專案層 `bigquery.user` + `polaris_core` READER） |
+| 建不了自己的 scratch dataset | 只有 `jobUser`、缺 `datasets.create` | 確認專案層角色是 `roles/bigquery.user`（非 `jobUser`） |
 | 查詢費用異常高 | 沒帶 partition filter，全表掃描 | 加 `published_at` 範圍與 `stock_id` 條件，先 dry-run |
 | 寫入失敗 | 誤把目標設成 `polaris_core` | 確認寫入目標是 `polaris_dev_<name>` |
 | 大家資料對不上 | 有人在 scratch 改了卻當成 canonical | 一律以 `polaris_core` 為準，scratch 只是個人實驗 |
@@ -296,15 +294,16 @@ bq query --use_legacy_sql=false \
 
 - [x] 單一團隊 project `polaris-desk-team` 已建立並開啟計費
 - [ ] 預算告警與 per-user 配額已設定
-- [ ] `gs://polaris-desk-raw` 已建立
-- [ ] `polaris_core` 已建立，7 位成員（`user:`）為 READER + `bigquery.jobUser`
+- [x] `gs://polaris-desk-raw` 已建立
+- [x] `polaris_core` 已建立，6 位成員專案層 `bigquery.user`；dataset 層 5 READER + R4 OWNER
 - [ ] canonical（chunks / embeddings / VECTOR INDEX / 財務指標 / ontology）已 ingest 一次
 - [ ] 7 位成員各自建立 scratch dataset 並通過讀取驗證
 - [ ] config 模組（`PROJECT_ID` / `CORE_DATASET`）已進版控
 
-> 全部勾選後，協作開發環境即就緒。目前只完成第 1 項，其餘為角色 4 的 Phase 1／2 工作。
+> 已完成：project/billing、bucket、`polaris_core` + 權限。**剩下三項**＝§3.5 成本護欄、§4 ingestion（角色 4）、每人 §5 建 scratch。全部勾選後即就緒。
 
 ---
 
-_版本：v1.1　|　對應 PRD：§13.4（向量檢索）、§23（部署）、§24（成本）_
+_版本：v1.2　|　對應 PRD：§13.4（向量檢索）、§23（部署）、§24（成本）_
+_v1.2 變更（2026-06-02）：§3.1–§3.4 已實際執行完成（API／bucket／空 `polaris_core`／6 人權限）；專案層角色由 `bigquery.jobUser` 修正為 `roles/bigquery.user`（jobUser 無法建 scratch dataset，會卡 §5）；§3.4 改為一般成員 READER、角色 4 OWNER；§9、§10 同步更新。_
 _v1.1 變更：專案改用乾淨 Project ID `polaris-desk-team`；IAM 從 Google Group 改為個別 `user:` 綁定（團隊用個人 gmail、無 Workspace 網域）；補上 Phase 0 現況、向量索引 region／5,000 列前提，與 Project ID vs 顯示名稱排查。_
