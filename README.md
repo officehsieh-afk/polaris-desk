@@ -155,4 +155,20 @@ docker run --env-file .env -p 8000:8000 polaris-desk
 
 ---
 
+## 抓台股法說會語料（外部 plugin）
+
+下載法說會簡報（中英）的工具已抽成獨立 Claude Code plugin，不再內建於本 repo：
+
+```
+/plugin marketplace add WayneSHC/fetch-tw-earnings-call
+/plugin install fetch-tw-earnings-call@wayne-tw-tools
+```
+
+用法 `python3 .../fetch_earnings_call.py --stock-id 2891 --from 2021 --to 2026`，輸出
+`data/<stock_id>_<name>/` + `manifest.json`（帶 source_url / fetched_at，符合 FR-003 接地）；
+繞過 MOPS 反爬、直打公司 IR 權威來源。設計與計畫仍留存於
+[`docs/superpowers/specs/2026-06-07-fetch-tw-earnings-call-skill-design.md`](docs/superpowers/specs/2026-06-07-fetch-tw-earnings-call-skill-design.md)。
+
+---
+
 _對應文件：4 週航程作戰計畫 §W1 / Notion 開工清單與本地上雲指南 / PRD v1.1.1 §18 Data Model_
