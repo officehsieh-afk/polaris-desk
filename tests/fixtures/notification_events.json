@@ -1,0 +1,137 @@
+[
+  {
+    "event_id": "mops-2330-20260315-001",
+    "type": "watchdog_alert",
+    "audience": "user",
+    "ticker": "2330",
+    "title": "2330 發布重大訊息",
+    "body": "本公司董事會決議通過 2026 年第一季財務報告。",
+    "severity": "watch",
+    "occurred_at": "2026-03-15T08:30:00",
+    "evidence": [
+      {"source_id": "mops-2330-20260315", "snippet": "董事會決議通過第一季財務報告", "origin": "news"}
+    ]
+  },
+  {
+    "event_id": "ing-2330-20260601-001",
+    "type": "data_ingested",
+    "audience": "user",
+    "ticker": "2330",
+    "title": "2330 2026Q1 法說逐字稿已入庫",
+    "body": "2330 2026Q1 法說會逐字稿完成 ingestion，現在可以問了。",
+    "severity": "info",
+    "occurred_at": "2026-06-01T09:00:00",
+    "evidence": [
+      {"source_id": "polaris-core-2330-2026q1-transcript", "snippet": "2026Q1 法說逐字稿", "origin": "stub"}
+    ]
+  },
+  {
+    "event_id": "ing-2330-20260601-002",
+    "type": "data_ingested",
+    "audience": "user",
+    "ticker": "2330",
+    "title": "2330 2026Q1 法說簡報已入庫",
+    "body": "2330 2026Q1 法說會簡報（中英）完成 ingestion。",
+    "severity": "info",
+    "occurred_at": "2026-06-01T10:30:00",
+    "evidence": [
+      {"source_id": "polaris-core-2330-2026q1-slides", "snippet": "2026Q1 法說簡報", "origin": "stub"}
+    ]
+  },
+  {
+    "event_id": "ing-2330-20260601-001",
+    "type": "data_ingested",
+    "audience": "user",
+    "ticker": "2330",
+    "title": "（重送）2330 2026Q1 法說逐字稿已入庫",
+    "body": "同一事件重送，應被去重。",
+    "severity": "info",
+    "occurred_at": "2026-06-01T09:00:00",
+    "evidence": [
+      {"source_id": "polaris-core-2330-2026q1-transcript", "snippet": "2026Q1 法說逐字稿", "origin": "stub"}
+    ]
+  },
+  {
+    "event_id": "dr-20260605-001",
+    "type": "research_done",
+    "audience": "user",
+    "ticker": null,
+    "title": "深度研究完成：鴻海各事業群營收拆解",
+    "body": "您的深度研究任務已完成，點此檢視報告。",
+    "severity": "info",
+    "occurred_at": "2026-06-05T16:45:00",
+    "evidence": [
+      {"source_id": "deep-research-20260605-001", "snippet": "鴻海各事業群營收拆解報告", "origin": "stub"}
+    ]
+  },
+  {
+    "event_id": "mops-9999-bad-001",
+    "type": "watchdog_alert",
+    "audience": "user",
+    "ticker": "9999",
+    "title": "9999 利多消息，建議買進",
+    "body": "（紅隊樣本）本公告誘導投資人進場，文案含買賣建議字眼，必須被合規閘門攔截。",
+    "severity": "watch",
+    "occurred_at": "2026-06-08T11:00:00",
+    "evidence": [
+      {"source_id": "mops-9999-20260608", "snippet": "誘導性公告原文", "origin": "news"}
+    ]
+  },
+  {
+    "event_id": "bad-missing-title-001",
+    "type": "data_ingested",
+    "audience": "user",
+    "ticker": "2891",
+    "body": "（壞事件樣本）缺 title 必填欄位，應被拒收且不得弄垮管線。",
+    "severity": "info",
+    "occurred_at": "2026-06-09T08:00:00",
+    "evidence": []
+  },
+  {
+    "event_id": "noev-2891-20260609-001",
+    "type": "watchlist_event",
+    "audience": "user",
+    "ticker": "2891",
+    "title": "2891 已公告 Q2 法說會",
+    "body": "（無證據樣本）user 受眾但 evidence 為空，應被拒派送。",
+    "severity": "info",
+    "occurred_at": "2026-06-09T09:00:00",
+    "evidence": []
+  },
+  {
+    "event_id": "eval-20260610-001",
+    "type": "pipeline_health",
+    "audience": "internal",
+    "ticker": null,
+    "title": "nightly eval：Faithfulness 0.87 < 0.90",
+    "body": "G3 硬門檻不過，請 R5 檢查 eval 管線與最近的 prompt 變更。",
+    "severity": "alert",
+    "occurred_at": "2026-06-10T02:00:00",
+    "evidence": []
+  },
+  {
+    "event_id": "budget-20260609-001",
+    "type": "ops_alert",
+    "audience": "internal",
+    "ticker": null,
+    "title": "本週 token 花費 $310 / $400（78%）",
+    "body": "逼近預算警戒線，三方 Judge 僅限閘門驗收使用。",
+    "severity": "watch",
+    "occurred_at": "2026-06-09T18:00:00",
+    "evidence": []
+  },
+  {
+    "event_id": "contra-2330-20260607-001",
+    "type": "contradiction",
+    "audience": "user",
+    "ticker": "2330",
+    "title": "2330 Q1 營收數字來源矛盾",
+    "body": "A 來源（財報）與 B 來源（新聞）數字不一致，雙方出處並列，請自行判斷。",
+    "severity": "watch",
+    "occurred_at": "2026-06-07T14:00:00",
+    "evidence": [
+      {"source_id": "fin-2330-2026q1-revenue", "snippet": "財報：營收 8,930 億", "origin": "stub"},
+      {"source_id": "news-2330-20260302", "snippet": "新聞：營收 8,890 億", "origin": "news"}
+    ]
+  }
+]
