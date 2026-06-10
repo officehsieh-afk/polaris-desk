@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     gcp_project: str = "polaris-desk-team"
     bq_dataset: str = "polaris_core"          # 共用唯讀 canonical
     dev_dataset: str = ""                     # 個人 scratch（polaris_dev_<name>）；寫入走這裡
+    # 憲法 III / SOP §3.4：polaris_core 預設唯讀（client 端防呆，不取代 server ACL）。
+    # 只有經 PM 同意的 ingestion 帳號（R1/R4，2026-06-08 起）設 BQ_ALLOW_CORE_WRITE=1。
+    bq_allow_core_write: bool = False
 
     # 本地 pgvector（離線 fallback）
     database_url: str = "postgresql://polaris:polaris@localhost:5432/polaris"

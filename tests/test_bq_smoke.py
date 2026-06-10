@@ -77,15 +77,26 @@ class TestConnectivityStep:
         assert _step(r, "connectivity").status == "fail"
 
 
-class TestRealBigQueryStorePending:
-    """不碰 R4 檔：用真實 BigQueryStore 驗證 harness 把現況歸類為 pending。"""
+class TestRealBigQueryStoreImplemented:
+    """health_check 已實作（2026-06-10）：真 store + 注入 client → 零改碼轉真煙測。"""
 
-    def test_real_store_is_pending(self):
+    def test_real_store_with_fake_client_is_ok(self):
         from polaris.vectorstore.bigquery_store import BigQueryStore
+        from tests.test_vectorstore_impl import FakeBQClient
 
-        store = BigQueryStore(_settings())
+        store = BigQueryStore(_settings(), client=FakeBQClient())
         r = d.bigquery_smoke(_settings(), store=store, creds_available=True)
-        assert _step(r, "connectivity").status == "pending"
+        assert _step(r, "connectivity").status == "ok"
+
+    def test_real_store_client_error_is_fail_not_pending(self):
+        from polaris.vectorstore.bigquery_store import BigQueryStore
+        from tests.test_vectorstore_impl import FakeBQClient
+
+        store = BigQueryStore(
+            _settings(), client=FakeBQClient(error=ConnectionError("no route"))
+        )
+        r = d.bigquery_smoke(_settings(), store=store, creds_available=True)
+        assert _step(r, "connectivity").status == "fail"
 
 
 class TestOverallPrecedence:
