@@ -20,4 +20,5 @@
 - [ ] R4 真實 MOPS 爬蟲接入（event_id / content 來自 MOPS API）
 - [ ] R7 Alert Inbox UI 消費 `WatchdogAlert`
 - [ ] 批次排程（定期掃描新公告）
-- [ ] 接 NotificationService：`run_watchdog()` → `NotificationService.publish(watchdog_alert_event)`
+- [X] 接 NotificationService：`watch_and_notify()` bridge（`notify.py`，2026-06-10）——
+  blocked alert withhold + internal 告警（原文不外溢）；passed alert 過第 2 閘入匣

@@ -5,6 +5,7 @@
 """
 from polaris.graph.watchdog.agent import run_watchdog
 from polaris.graph.watchdog.events import MopsEvent, load_mock_events
+from polaris.graph.watchdog.notify import watch_and_notify
 from polaris.graph.watchdog.state import WatchdogAlert, WatchdogSeverity
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "WatchdogSeverity",
     "load_mock_events",
     "run_watchdog",
+    "watch_and_notify",
 ]
