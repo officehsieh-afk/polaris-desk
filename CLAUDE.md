@@ -1,7 +1,7 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/001-langgraph-skeleton/plan.md`
+`specs/002-notification-center/plan.md`
 <!-- SPECKIT END -->
 
 # Polaris Desk — 給 coding agent 的專案守則

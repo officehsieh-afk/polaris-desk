@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     llm_max_output_tokens: int = 4096         # 每次生成輸出上限（傳給 Gemini，擋失控長輸出）
     llm_token_budget: int = 0                 # process 累計 token 上限；0 = 無上限（預設）
 
+    # 通知中心（specs/002）：內部 Slack incoming webhook。金鑰規則同憲法 III——
+    # 只放 .env / Secret Manager，永不 commit；留空 = channel 自動停用（0 外呼）。
+    slack_webhook_url: str = ""
+
     # 應用
     app_env: str = "local"                    # local | cloud
     log_level: str = "INFO"
