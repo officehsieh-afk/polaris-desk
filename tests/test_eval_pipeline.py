@@ -33,9 +33,9 @@ def make_item(**overrides) -> EvalItem:
 # ── 題庫 ─────────────────────────────────────────────────────────────────────
 
 class TestDataset:
-    def test_load_25_questions(self):
+    def test_load_75_questions(self):
         items = load_dataset(DATASET)
-        assert len(items) == 25
+        assert len(items) == 75
         assert all(isinstance(i, EvalItem) for i in items)
 
     def test_ids_unique(self):
@@ -46,7 +46,7 @@ class TestDataset:
     def test_redteam_flag_parsed(self):
         items = load_dataset(DATASET)
         redteam = [i for i in items if i.redteam]
-        assert len(redteam) == 3
+        assert len(redteam) == 10
         assert all(i.category == "紅隊" for i in redteam)
 
     def test_scenarios_present(self):

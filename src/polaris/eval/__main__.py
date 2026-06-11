@@ -14,7 +14,7 @@ from polaris.eval.report import render_markdown
 from polaris.eval.runner import run_dataset
 from polaris.eval.score import ragas_available, smoke_score
 
-#: 預設題庫（W1 25 題；隨套件出貨）。
+#: 預設題庫（W2 75 題；隨套件出貨）。
 DEFAULT_DATASET = Path(__file__).resolve().parent / "data" / "questions_v0.csv"
 
 
