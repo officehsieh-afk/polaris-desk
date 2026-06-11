@@ -14,6 +14,10 @@
 - ``POST /notifications/reset``         → 重置收件匣（demo / 測試隔離用）
 - ``GET  /demo/notifications``          → 互動 demo 頁（單檔 HTML，吃上面四個端點）
 
+Watchdog（specs/003，R7 Alert Inbox 消費端）：
+
+- ``GET  /alerts``                      → mock MOPS 事件跑 Watchdog，回 WatchdogAlert 陣列（token-free）
+
 **欄位名一字不差**（``source_id`` / ``compliance_status`` / ``react_steps`` …）；改契約＝R2/R3/R7 一起改。
 這層只做「HTTP ↔ 既有函式」的薄轉接：不碰 graph/state/compliance/Deep Research 本體。
 無金鑰時引擎走 fallback → 本 API 仍可端到端回應（token-free、CI 可測）。
@@ -34,6 +38,7 @@ from polaris.config import settings
 from polaris.graph.deep_research.agent import run_deep_research
 from polaris.graph.deep_research.state import ReActStep
 from polaris.graph.state import Citation, NodeTrace
+from polaris.graph.watchdog import load_mock_events, run_watchdog
 from polaris.graph.workflow import build_workflow
 from polaris.notifications import (
     Notification,
@@ -42,6 +47,10 @@ from polaris.notifications import (
     SlackWebhookChannel,
 )
 from polaris.server import health_payload, resolve_port
+
+_WATCHDOG_MOCK_EVENTS = (
+    Path(__file__).resolve().parent / "graph" / "watchdog" / "data" / "watchdog_events.json"
+)
 
 app = FastAPI(
     title="Polaris Desk API",
@@ -199,6 +208,39 @@ def reset_notifications() -> dict[str, str]:
 def notifications_demo() -> HTMLResponse:
     """互動 demo 頁：收件匣 UI/UX + 事件模擬器（吃同源 /notifications 端點）。"""
     return HTMLResponse(_DEMO_HTML.read_text(encoding="utf-8"))
+
+
+# --- Watchdog（specs/003）— R7 Alert Inbox 消費端 ----------------------------
+
+class AlertResponse(BaseModel):
+    """R7 Alert Inbox 契約（docs/R7_frontend_開工指南.md §2c）。欄位名一字不差。"""
+
+    event_id: str
+    ticker: str
+    summary: str
+    compliance_status: str
+    severity: str
+    evidence: list[Citation]
+
+
+@app.get("/alerts", response_model=list[AlertResponse], tags=["watchdog"])
+def alerts() -> list[AlertResponse]:
+    """跑 mock MOPS 事件集 → WatchdogAlert 陣列（token-free fallback，CI 可測）。
+
+    R7 Alert Inbox 直接消費本端點；severity 上色、blocked 標紅。
+    無 Gemini 金鑰時 Watchdog 走確定性 fallback（token=0）。
+    """
+    return [
+        AlertResponse(
+            event_id=a.event_id,
+            ticker=a.ticker,
+            summary=a.summary,
+            compliance_status=a.compliance_status,
+            severity=a.severity,
+            evidence=a.evidence,
+        )
+        for a in (run_watchdog(e) for e in load_mock_events(_WATCHDOG_MOCK_EVENTS))
+    ]
 
 
 def main() -> None:  # pragma: no cover - 進入點，由 `python -m polaris.api` 啟動

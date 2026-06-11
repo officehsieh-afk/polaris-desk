@@ -127,3 +127,39 @@ class TestBlankInput:
 
     def test_blank_question_is_422(self, client):
         assert client.post("/research", json={"question": "  "}).status_code == 422
+
+
+class TestAlerts:
+    def test_alerts_returns_200_list(self, client):
+        r = client.get("/alerts")
+        assert r.status_code == 200
+        assert isinstance(r.json(), list)
+        assert len(r.json()) > 0
+
+    def test_alerts_have_contract_fields(self, client):
+        # R7 §2c 契約欄位（一字不差）
+        required = {"event_id", "ticker", "summary", "compliance_status", "severity", "evidence"}
+        for alert in client.get("/alerts").json():
+            assert required <= alert.keys()
+
+    def test_alerts_compliance_status_valid(self, client):
+        valid = {"passed", "blocked"}
+        for alert in client.get("/alerts").json():
+            assert alert["compliance_status"] in valid
+
+    def test_alerts_severity_valid(self, client):
+        valid = {"info", "watch", "alert"}
+        for alert in client.get("/alerts").json():
+            assert alert["severity"] in valid
+
+    def test_alerts_evidence_has_citation_fields(self, client):
+        for alert in client.get("/alerts").json():
+            for ev in alert["evidence"]:
+                assert {"source_id", "snippet", "origin"} <= ev.keys()
+
+    def test_alerts_no_buysell_in_summaries(self, client):
+        # NFR-031：所有摘要不得含買賣建議關鍵字
+        forbidden = {"建議買進", "建議賣出", "加碼", "減碼", "看多", "看空"}
+        for alert in client.get("/alerts").json():
+            for kw in forbidden:
+                assert kw not in alert["summary"]
