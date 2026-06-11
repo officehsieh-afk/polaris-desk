@@ -9,10 +9,18 @@
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 from polaris.eval.runner import EvalRecord
 from polaris.graph.compliance import BUYSELL_KEYWORDS
+
+#: G3 閘門硬門檻（憲法 §IV）。report.py / CLI 共用同一份，不重複定義。
+RAGAS_THRESHOLDS: dict[str, float] = {
+    "context_precision": 0.85,
+    "faithfulness": 0.90,
+    "answer_relevancy": 0.85,
+}
 
 
 @dataclass
@@ -86,19 +94,61 @@ def ragas_available() -> bool:
 def ragas_score(records: list[EvalRecord]) -> dict[str, float] | None:
     """Ragas CP / Faithfulness / AR。未裝 extra 或無金鑰 → None（誠實缺席）。
 
-    真分整合（接 Gemini judge）由 R5 在 ``[eval]`` extra 環境完成；
-    本函式先守住「沒裝就回 None、絕不假分」的契約。
+    需要：
+    - ``uv pip install -e '.[eval]'``（ragas + langchain-google-genai + datasets）
+    - 環境變數 ``GEMINI_API_KEY`` 或 ``GOOGLE_API_KEY``
+
+    模型：``RAGAS_JUDGE_MODEL`` env（預設 ``gemini-2.0-flash``）。
+    任何異常（網路、quota、schema 不符）都回 None，絕不假分。
     """
     if not ragas_available():
         return None
-    raise NotImplementedError(
-        "Ragas judge 整合（langchain-google-genai）待 R5 在 [eval] 環境完成；"
-        "見 specs/004-eval-pipeline/spec.md Phase 2"
-    )
+
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+
+    try:
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        from ragas import EvaluationDataset, SingleTurnSample, evaluate
+        from ragas.llms import LangchainLLMWrapper
+        from ragas.metrics import AnswerRelevancy, ContextPrecision, Faithfulness
+
+        model = os.environ.get("RAGAS_JUDGE_MODEL", "gemini-2.0-flash")
+        evaluator_llm = LangchainLLMWrapper(
+            ChatGoogleGenerativeAI(model=model, google_api_key=api_key)
+        )
+        metrics = [
+            ContextPrecision(llm=evaluator_llm),
+            Faithfulness(llm=evaluator_llm),
+            AnswerRelevancy(llm=evaluator_llm),
+        ]
+        samples = [
+            SingleTurnSample(
+                user_input=r.item.question,
+                # contexts が空の場合は placeholder を入れて Ragas schema を満たす
+                retrieved_contexts=r.contexts if r.contexts else ["（無引用語料）"],
+                response=r.answer,
+                reference=r.ground_truth,
+            )
+            for r in records
+        ]
+        result = evaluate(
+            dataset=EvaluationDataset(samples=samples),
+            metrics=metrics,
+        )
+        return {
+            "context_precision": float(result["context_precision"]),
+            "faithfulness": float(result["faithfulness"]),
+            "answer_relevancy": float(result["answer_relevancy"]),
+        }
+    except Exception:  # noqa: BLE001 — Ragas / network 任何失敗都誠實回 None
+        return None
 
 
 __all__ = [
     "ItemScore",
+    "RAGAS_THRESHOLDS",
     "SmokeReport",
     "ragas_available",
     "ragas_score",

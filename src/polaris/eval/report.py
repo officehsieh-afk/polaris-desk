@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 from polaris.eval.runner import EvalRecord
-from polaris.eval.score import SmokeReport
+from polaris.eval.score import RAGAS_THRESHOLDS, SmokeReport
 
 
 def render_markdown(
-    records: list[EvalRecord], report: SmokeReport, *, is_stub_corpus: bool = True
+    records: list[EvalRecord],
+    report: SmokeReport,
+    *,
+    is_stub_corpus: bool = True,
+    ragas_scores: dict[str, float] | None = None,
 ) -> str:
     """產 Markdown 報告。``is_stub_corpus=True`` 時標明煙測分（誠實原則）。"""
     lines = ["# Polaris Desk Eval 報告", ""]
@@ -31,6 +35,25 @@ def render_markdown(
             failed = [k for k, v in by_id[item_id].checks.items() if not v]
             lines.append(f"- {item_id}：fail {', '.join(failed)}")
         lines.append("")
+
+    if ragas_scores is not None:
+        lines += ["## Ragas 真分（G3 閘門）", ""]
+        all_pass = True
+        for metric, score in ragas_scores.items():
+            threshold = RAGAS_THRESHOLDS.get(metric, 0.0)
+            ok = score >= threshold
+            if not ok:
+                all_pass = False
+            status = "✅" if ok else "❌"
+            lines.append(
+                f"- **{metric}**：{score:.3f}　（門檻 {threshold}）　{status}"
+            )
+        lines += [
+            "",
+            f"> G3 {'**PASS**' if all_pass else '**FAIL** — 未達門檻，回報 R5 補強語料'}",
+            "",
+        ]
+
     return "\n".join(lines)
 
 

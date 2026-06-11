@@ -143,6 +143,16 @@ def test_ragas_not_installed_in_ci():
     assert ragas_available() is False
 
 
+def test_ragas_score_returns_none_when_unavailable():
+    """ragas_score 在 CI（無 [eval] extra）誠實回 None，絕不假分。"""
+    from polaris.eval.score import ragas_score
+    from polaris.eval.runner import run_item
+
+    record = make_item()
+    result = ragas_score([run_item(record)])
+    assert result is None
+
+
 def test_cli_main_quick(capsys):
     from polaris.eval.__main__ import main
 
