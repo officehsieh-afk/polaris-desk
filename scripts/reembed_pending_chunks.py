@@ -22,9 +22,27 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 
 from polaris.config import settings
 from polaris.llm.gemini import GeminiClient, available
+
+#: 免費層 gemini-embedding-2 配額 100 req/min → 留安全邊際節流到 ~75 req/min。
+_PACE_SECONDS = 0.8
+
+
+def _embed_with_retry(llm: GeminiClient, text: str, *, max_retries: int = 5) -> list[float]:
+    """單筆 embed＋429 退避重試（免費層 per-minute 配額用完就等下一個窗口）。"""
+    for attempt in range(max_retries):
+        try:
+            return llm.embed(text)
+        except Exception as e:  # noqa: BLE001 — 只攔 429，其他照拋
+            if "429" not in str(e) or attempt == max_retries - 1:
+                raise
+            wait = 20 * (attempt + 1)
+            print(f"  429 quota，等 {wait}s 後重試（{attempt + 1}/{max_retries}）")
+            time.sleep(wait)
+    raise RuntimeError("unreachable")
 
 
 def main() -> int:
@@ -70,7 +88,8 @@ def main() -> int:
     llm = GeminiClient()
     rows = []
     for i, r in enumerate(pending):
-        emb = llm.embed(r["chunk_text"])
+        emb = _embed_with_retry(llm, r["chunk_text"])
+        time.sleep(_PACE_SECONDS)
         assert len(emb) == settings.embedding_dim, (r["chunk_id"], len(emb))
         rows.append({
             "chunk_id": r["chunk_id"],
@@ -87,7 +106,7 @@ def main() -> int:
     job_config = bigquery.LoadJobConfig(
         write_disposition="WRITE_APPEND",
         schema=[
-            bigquery.SchemaField("chunk_id", "STRING"),
+            bigquery.SchemaField("chunk_id", "STRING", mode="REQUIRED"),
             bigquery.SchemaField("ticker", "STRING"),
             bigquery.SchemaField("doc_type", "STRING"),
             bigquery.SchemaField("fiscal_period", "STRING"),

@@ -13,10 +13,10 @@
 -- top-1 score=1.0、filter 對映、寫入防呆），以下 SQL 直接取 staging 為來源。
 --
 -- ⚠️ 已知排除項（套用者請知悉）：
---   1. jenny 的 96 筆 transcript chunks 是 **3072 維**（違反憲法 768/cosine），
---      已隔離在 `polaris_dev_wayne_staging.chunks_pending_reembed`（原向量保留）。
---      待有 GEMINI_API_KEY 的人用 gemini-embedding-2 @768 重算後再 INSERT 進
---      polaris_core.chunks（欄位已對齊，重算後直接照 §A 的欄位順序插入）。
+--   1. ✅ 已解決（2026-06-12）：jenny 的 96 筆 transcript chunks 原為 3072 維，
+--      已用 scripts/reembed_pending_chunks.py（gemini-embedding-2 @768）重算並
+--      併入 staging.chunks；隔離表 chunks_pending_reembed 保留原 3072 維向量
+--      供稽核。語意檢索已 live 驗證（中文查詢 → VECTOR_SEARCH 命中正確頁面）。
 --   2. polaris_dev_hbb97.03_financial_metric（25 列）疑為 financial_metrics 的
 --      舊版重複，未納入；請 R4 確認後刪除或合併。
 --   3. 題庫 20 檔股票中 15 檔（1216/2303/2357/2382/2412/2881/2882/2884/2886/
@@ -40,8 +40,9 @@ INSERT INTO `polaris-desk-team.polaris_core.chunks`
   (chunk_id, ticker, doc_type, fiscal_period, published_at, chunk_text, embedding)
 SELECT chunk_id, ticker, doc_type, fiscal_period, published_at, chunk_text, embedding
 FROM `polaris-desk-team.polaris_dev_wayne_staging.chunks`;
--- 來源組成：151 列＝polaris_dev_hbb97.chunks 全量（presentation / news /
--- major_news，5 檔：2308/2317/2330/2454/3034，均 768 維）。
+-- 來源組成：247 列＝polaris_dev_hbb97.chunks 全量 151（presentation / news /
+-- major_news）＋ jenny transcript chunks 96（已重算 768 維）；
+-- 5 檔：2308/2317/2330/2454/3034，全部 768 維、chunk_id 無重複。
 
 -- ── B. 向量索引（SOP §4.2）───────────────────────────────────────────────────
 -- ⚠️ BigQuery 在 <5,000 列的表上不會物化向量索引；目前 151 列，VECTOR_SEARCH
@@ -86,7 +87,7 @@ FROM `polaris-desk-team.polaris_dev_wayne_staging.financial_metrics`;
 --    SELECT 'chunks' t, COUNT(*) n FROM `polaris-desk-team.polaris_core.chunks`
 --    UNION ALL SELECT 'financial_metrics', COUNT(*)
 --      FROM `polaris-desk-team.polaris_core.financial_metrics`;
---    -- 預期：chunks=151、financial_metrics=376
+--    -- 預期：chunks=247、financial_metrics=376
 -- 2) 維度守門：
 --    SELECT COUNT(*) FROM `polaris-desk-team.polaris_core.chunks`
 --    WHERE ARRAY_LENGTH(embedding) != 768;   -- 預期 0
