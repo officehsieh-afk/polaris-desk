@@ -17,8 +17,9 @@ from typing import Any
 
 from rank_bm25 import BM25Okapi
 
+from ..config import settings
 from ..vectorstore import SearchResult, VectorStore, get_vector_store
-from .rerank import Reranker
+from .rerank import Reranker, active_reranker
 
 
 EmbeddingFn = Callable[[str], list[float]]
@@ -221,3 +222,25 @@ class HybridRetriever:
             *self._vector_search(query, filters),
         ])
         return self._apply_rerank(query, merged)
+
+
+def build_retriever(*, top_k: int | None = None) -> HybridRetriever:
+    """組裝可直接用的 3 路檢索器：BM25 + Gemini 向量 + Cohere rerank。
+
+    外呼路全部 graceful degrade（demo / CI 無金鑰也能跑、0 外呼）：
+    - 有 ``GEMINI_API_KEY`` → 接 Gemini embedding（向量路）；否則 embedding_fn=None，
+      只走 BM25。**不**產假向量（假向量會毒化檢索，鏡像 ingestion 的誠實原則）。
+    - 有 ``COHERE_API_KEY`` → 接 Cohere rerank（第 3 路）；否則退分數排序。
+
+    與 ingestion 的差異：ingestion 無金鑰要誠實失敗（不可入假向量）；檢索無金鑰則
+    降級 BM25 即可——BM25 永遠可用，檢索仍有結果。
+    """
+    from ..llm.gemini import active_llm  # 延遲 import，無金鑰時不建 Gemini client
+
+    client = active_llm()
+    embedding_fn = client.embed if client is not None else None
+    return HybridRetriever(
+        top_k=settings.top_k if top_k is None else top_k,
+        embedding_fn=embedding_fn,
+        reranker=active_reranker(),
+    )

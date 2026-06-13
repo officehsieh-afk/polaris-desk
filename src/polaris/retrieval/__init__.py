@@ -8,10 +8,11 @@ from .rerank import (
     active_reranker,
     cohere_available,
 )
-from .retriever import EmbeddingFn, HybridRetriever
+from .retriever import EmbeddingFn, HybridRetriever, build_retriever
 
 __all__ = [
     "HybridRetriever",
+    "build_retriever",
     "EmbeddingFn",
     "Reranker",
     "CohereReranker",
