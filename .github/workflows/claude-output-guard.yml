@@ -1,0 +1,111 @@
+name: Claude Output Guard
+
+on:
+  push:
+    branches:
+      - "claude/**"
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: claude-output-guard-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    name: guard
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main
+        run: git fetch --no-tags origin main
+
+      - name: Summarize branch state
+        id: branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          base="$(git merge-base HEAD origin/main)"
+          ahead="$(git rev-list --count origin/main..HEAD)"
+          behind="$(git rev-list --count HEAD..origin/main)"
+
+          {
+            echo "## Claude output guard"
+            echo
+            echo "| Check | Result |"
+            echo "| --- | --- |"
+            echo "| Head branch | \`${GITHUB_REF_NAME}\` |"
+            echo "| Ahead of main | \`${ahead}\` commit(s) |"
+            echo "| Behind main | \`${behind}\` commit(s) |"
+            echo
+            echo "### Changed files"
+            echo
+            git diff --name-status "${base}...HEAD" | sed 's/^/- `/; s/$/`/' || true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "ahead=${ahead}" >> "$GITHUB_OUTPUT"
+          echo "behind=${behind}" >> "$GITHUB_OUTPUT"
+
+          if [ "$ahead" -eq 0 ]; then
+            echo "Claude branch has no commits ahead of main." >&2
+            exit 1
+          fi
+
+      - name: Require fresh base
+        if: steps.branch.outputs.behind != '0'
+        run: |
+          echo "This branch is behind origin/main. Ask Claude to run:"
+          echo "  git fetch origin"
+          echo "  git merge origin/main"
+          echo "then push again before review."
+          exit 1
+
+      - name: Require tests for source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="$(git merge-base HEAD origin/main)"
+          changed="$(git diff --name-only "${base}...HEAD")"
+
+          if echo "$changed" | grep -q '^src/'; then
+            if ! echo "$changed" | grep -q '^tests/'; then
+              echo "Source files changed but no tests changed." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.13
+        run: uv python install 3.13
+
+      - name: Bootstrap env
+        run: make setup
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+
+      - name: Eval smoke
+        run: make eval-smoke
