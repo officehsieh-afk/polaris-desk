@@ -1,12 +1,12 @@
-"""4-way 混合檢索骨架（@R3）。
+"""4-way 混合檢索（@R3）。
 
-v0/v1 先做低成本、確定性的 2-way 檢索：
-- 不需要 Gemini / Cohere / BigQuery key
-- 預設不呼叫外部 API
-- BM25 keyword ranking 先可用
-- Vector search 透過可注入的 embedding_fn + VectorStore.search 介面接入
+低成本、確定性優先；外呼路全部 opt-in：
+- 不設任何 key 也能跑（預設只走 BM25，0 外呼）
+- BM25 keyword ranking 永遠可用
+- 向量語意：透過可注入的 embedding_fn + VectorStore.search 介面接入（路 2）
+- Cohere Rerank（rerank-v4.0）：注入 reranker 即啟用，對候選重排（路 3，見 rerank.py）
 - 回傳 SearchResult，讓 Writer 後續可以接 citation
-- W2 再把 Cohere rerank / ColPali 接進來
+- ColPali：待 R4 POC 上線再補（路 4）
 """
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from typing import Any
 from rank_bm25 import BM25Okapi
 
 from ..vectorstore import SearchResult, VectorStore, get_vector_store
+from .rerank import Reranker
 
 
 EmbeddingFn = Callable[[str], list[float]]
@@ -142,6 +143,7 @@ class HybridRetriever:
     top_k: int = 8
     store: VectorStore | None = None
     embedding_fn: EmbeddingFn | None = None
+    reranker: Reranker | None = None
 
     def __post_init__(self) -> None:
         if self.store is None:
@@ -186,19 +188,36 @@ class HybridRetriever:
             return []
         return [_normalize_vector_result(result) for result in results]
 
-    def retrieve(self, query: str, *, filters: dict | None = None) -> list[SearchResult]:
-        """Retriever D3：BM25 keyword + optional vector search interface.
+    def _by_score(self, merged: list[SearchResult]) -> list[SearchResult]:
+        merged.sort(key=lambda r: r.score, reverse=True)
+        return merged[: self.top_k]
 
-        Vector search is intentionally opt-in through ``embedding_fn`` so local
-        tests and personal development do not spend API quota by accident.
+    def _apply_rerank(self, query: str, merged: list[SearchResult]) -> list[SearchResult]:
+        """第 3 路：用注入的 reranker（Cohere `rerank-v4.0`）重排候選。
+
+        沒注入 reranker → 維持原本分數排序。rerank 失敗（含外呼錯誤）一律
+        graceful fallback 回分數排序，不可讓檢索掛掉（鏡像 ``_vector_search``）。
+        """
+        if self.reranker is None or not merged:
+            return self._by_score(merged)
+        try:
+            reranked = self.reranker.rerank(query, merged, top_k=self.top_k)
+        except Exception:  # noqa: BLE001 - rerank 是強化路，壞了退分數排序即可
+            return self._by_score(merged)
+        return reranked[: self.top_k]
+
+    def retrieve(self, query: str, *, filters: dict | None = None) -> list[SearchResult]:
+        """Retriever：BM25 keyword + optional vector + optional Cohere rerank。
+
+        Vector / rerank 都是 opt-in（``embedding_fn`` / ``reranker``），所以本地
+        測試與個人開發預設不會誤花 API 額度。BM25 永遠可用。
         """
         query = (query or "").strip()
         if not query:
             return []
 
-        ranked = _merge_results([
+        merged = _merge_results([
             *self._bm25_search(query, filters),
             *self._vector_search(query, filters),
         ])
-        ranked.sort(key=lambda r: r.score, reverse=True)
-        return ranked[: self.top_k]
+        return self._apply_rerank(query, merged)
