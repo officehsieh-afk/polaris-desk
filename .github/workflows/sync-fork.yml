@@ -1,0 +1,27 @@
+name: Sync fork from upstream
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-fork-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Sync fork main from upstream main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh repo sync officehsieh-afk/polaris-desk \
+            --source WayneSHC/polaris-desk \
+            --branch main
