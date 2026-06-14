@@ -66,6 +66,19 @@ class TestChunkPages:
         chunks = chunk_pages(["", PAGE_2], ticker="2330", period="2025Q1")
         assert all(c["metadata"]["page"] == 2 for c in chunks)
 
+    def test_doc_type_and_published_at_into_metadata(self):
+        """doc_type / published_at 進 metadata（canonical chunks 的 cluster 欄 / 接地日期）。"""
+        chunks = chunk_pages([PAGE_1], ticker="2330", period="2025Q1",
+                             doc_type="presentation", published_at="2025-04-17")
+        assert chunks[0]["metadata"]["doc_type"] == "presentation"
+        assert chunks[0]["metadata"]["published_at"] == "2025-04-17"
+
+    def test_doc_type_and_published_at_omitted_when_blank(self):
+        """未提供時不塞空鍵——維持 doc_id/page 既有契約，不污染 metadata。"""
+        chunks = chunk_pages([PAGE_1], ticker="2330", period="2025Q1")
+        assert "doc_type" not in chunks[0]["metadata"]
+        assert "published_at" not in chunks[0]["metadata"]
+
 
 class TestEndToEnd:
     def test_chunker_output_feeds_pipeline(self, tmp_path):
@@ -83,6 +96,19 @@ class TestEndToEnd:
         assert doc.metadata["page"] == 1
         assert doc.metadata["source"] == "2330_2025Q1.pdf"
 
+    def test_doc_type_published_at_reach_document_metadata(self, tmp_path):
+        """chunker 帶的 doc_type / published_at 經 pipeline 落到 Document.metadata
+        （BigQueryStore canonical 欄就靠這兩個鍵，缺了會寫成 NULL）。"""
+        chunks = chunk_pages([PAGE_1], ticker="2330", period="2025Q1",
+                             doc_type="presentation", published_at="2025-04-17")
+        out = tmp_path / "chunks.jsonl"
+        write_jsonl(chunks, out)
+        store = FakeStore()
+        ingest_chunks(load_chunks(out), store=store, embed=fake_embed)
+        doc = store.added[0]
+        assert doc.metadata["doc_type"] == "presentation"
+        assert doc.metadata["published_at"] == "2025-04-17"
+
     def test_extract_pages_txt(self, tmp_path):
         p = tmp_path / "transcript.txt"
         p.write_text(PAGE_1, encoding="utf-8")
@@ -99,6 +125,18 @@ class TestEndToEnd:
         rows = [json.loads(line) for line in out.read_text().splitlines()]
         assert rows[0]["company"] == "2330"
         assert "1 頁" in capsys.readouterr().out
+
+    def test_cli_main_doc_type_and_published_at_flags(self, tmp_path):
+        src = tmp_path / "2330.txt"
+        src.write_text(PAGE_1, encoding="utf-8")
+        out = tmp_path / "out.jsonl"
+        code = main([str(src), "--ticker", "2330", "--period", "2025Q1",
+                     "--doc-type", "transcript", "--published-at", "2025-04-17",
+                     "-o", str(out)])
+        assert code == 0
+        rows = [json.loads(line) for line in out.read_text().splitlines()]
+        assert rows[0]["metadata"]["doc_type"] == "transcript"
+        assert rows[0]["metadata"]["published_at"] == "2025-04-17"
 
 
 def test_default_chunk_size_sane():

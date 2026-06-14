@@ -74,10 +74,18 @@ def chunk_pages(
     period: str,
     doc_id: str | None = None,
     source: str = "",
+    doc_type: str = "",
+    published_at: str = "",
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     overlap: int = DEFAULT_OVERLAP,
 ) -> list[dict]:
-    """多頁文字 → pipeline 輸入契約的 chunk dicts（id 確定性、頁碼接地）。"""
+    """多頁文字 → pipeline 輸入契約的 chunk dicts（id 確定性、頁碼接地）。
+
+    ``doc_type``（如 ``presentation`` / ``transcript``）與 ``published_at``
+    （ISO 日期，如 ``2025-04-17``）若提供就進 metadata —— BigQueryStore 的
+    canonical ``doc_type`` / ``published_at`` 欄（cluster 鍵 + 接地日期）靠這兩
+    個鍵填值，缺了會寫成 NULL、cluster/filter 形同失效。未提供則不塞空鍵。
+    """
     doc = doc_id or f"{ticker}-{period}"
     out: list[dict] = []
     for page_no, text in enumerate(pages, start=1):
@@ -93,6 +101,8 @@ def chunk_pages(
                     "doc_id": doc,
                     "page": page_no,
                     **({"source": source} if source else {}),
+                    **({"doc_type": doc_type} if doc_type else {}),
+                    **({"published_at": published_at} if published_at else {}),
                 },
             })
     return out
@@ -126,6 +136,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("input", help="PDF 或 .txt/.md 檔")
     parser.add_argument("--ticker", required=True)
     parser.add_argument("--period", required=True, help="例 2025Q1")
+    parser.add_argument(
+        "--doc-type", default="",
+        help="文件型別（如 presentation / transcript）→ canonical doc_type 欄 + cluster 鍵",
+    )
+    parser.add_argument(
+        "--published-at", default="",
+        help="發布日 ISO 格式（如 2025-04-17）→ canonical published_at 欄（引用接地）",
+    )
     parser.add_argument("--out", "-o", default="", help="輸出 JSONL（預設 <input>.chunks.jsonl）")
     parser.add_argument("--chunk-size", type=int, default=DEFAULT_CHUNK_SIZE)
     parser.add_argument("--overlap", type=int, default=DEFAULT_OVERLAP)
@@ -137,6 +155,8 @@ def main(argv: list[str] | None = None) -> int:
         ticker=args.ticker,
         period=args.period,
         source=Path(args.input).name,
+        doc_type=args.doc_type,
+        published_at=args.published_at,
         chunk_size=args.chunk_size,
         overlap=args.overlap,
     )
