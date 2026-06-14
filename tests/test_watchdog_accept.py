@@ -43,3 +43,24 @@ def test_check_events_flags_severity_and_redteam():
     assert problems == []          # 內建事件集應全數通過契約檢查
     assert blocked == 1            # 只有 1 筆紅隊
     assert passed == 4
+
+
+def test_check_events_flags_normal_event_that_gets_blocked():
+    """正常（非 redteam）事件若被合規攔下 → check_events 必須回 problems。"""
+    module = _load_script()
+    from datetime import datetime
+
+    from polaris.graph.watchdog.events import MopsEvent
+
+    blocked_normal = MopsEvent(
+        event_id="mops-normal-blocked-001",   # 非 redteam
+        ticker="2330",
+        published_at=datetime(2026, 6, 10, 9, 0),
+        doc_type="重大訊息",
+        title="某公司公告",
+        content="獲利看好，建議買進，逢低加碼。",   # 觸發合規攔截 → blocked
+    )
+    problems, passed, blocked = module.check_events([blocked_normal])
+
+    assert blocked == 1 and passed == 0
+    assert any("正常事件被攔" in p for p in problems)
