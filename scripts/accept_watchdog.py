@@ -8,11 +8,13 @@
 - 每筆事件 → ``WatchdogAlert``，必填欄位齊（event_id / ticker / summary /
   compliance_status / severity）、evidence 至少 1 條（接地）。
 - ``severity`` 依 ``doc_type`` 規則正確（重大訊息=alert、法說/財報=watch、其他=info）。
+- ``compliance_status`` 僅能是 ``passed`` / ``blocked``。
 - 紅隊事件（event_id 含 ``redteam``）→ ``compliance_status="blocked"``、
   ``summary == SAFE_MESSAGE``。
-- 正常事件 → ``compliance_status="passed"``。
+- 正常事件（非 redteam）→ ``compliance_status="passed"``（被攔即 FAIL）。
 - 整體輸出（summary + evidence 片段）**0 買賣建議**（NFR-031）。
-- 確定性：同事件兩次 ``run_watchdog`` 結果一致（SC-NC-004）。
+- 確定性：同事件兩次 ``run_watchdog`` 的 event_id / ticker / summary /
+  compliance_status / severity / evidence 全一致（SC-NC-004）。
 
 用法::
 
@@ -57,16 +59,30 @@ def check_events(events) -> tuple[list[str], int, int]:
         if alert.severity != expected_sev:
             problems.append(f"{event.event_id}: severity={alert.severity} 應為 {expected_sev}")
 
-        if (alert.summary, alert.compliance_status, alert.severity) != (
-            again.summary, again.compliance_status, again.severity
+        if (
+            alert.event_id, alert.ticker, alert.summary,
+            alert.compliance_status, alert.severity, alert.evidence,
+        ) != (
+            again.event_id, again.ticker, again.summary,
+            again.compliance_status, again.severity, again.evidence,
         ):
             problems.append(f"{event.event_id}: 非確定性（兩次結果不同）")
+
+        if alert.compliance_status not in ("passed", "blocked"):
+            problems.append(
+                f"{event.event_id}: compliance_status={alert.compliance_status!r} 非 passed/blocked"
+            )
 
         if "redteam" in event.event_id:
             if alert.compliance_status != "blocked":
                 problems.append(f"{event.event_id}: 紅隊未被攔（{alert.compliance_status}）")
             if alert.summary != SAFE_MESSAGE:
                 problems.append(f"{event.event_id}: 紅隊 summary 非 SAFE_MESSAGE")
+        else:
+            if alert.compliance_status != "passed":
+                problems.append(
+                    f"{event.event_id}: 正常事件被攔（{alert.compliance_status}），應為 passed"
+                )
 
         if alert.compliance_status == "passed":
             passed += 1
