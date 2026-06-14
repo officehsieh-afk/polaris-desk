@@ -1,4 +1,5 @@
-from polaris.retrieval.retriever import HybridRetriever
+from polaris.retrieval.rerank import CohereReranker
+from polaris.retrieval.retriever import HybridRetriever, build_retriever
 
 
 def test_retriever_returns_ranked_results():
@@ -94,3 +95,65 @@ def test_retriever_deduplicates_bm25_and_vector_results():
     merged = next(result for result in results if result.id == "stub-2330-2025Q1-gm")
     assert merged.score == 0.99
     assert merged.metadata["retrieval_channels"] == ["bm25", "vector"]
+
+
+# --- build_retriever：一鍵組裝 3 路 + graceful degrade（token-free）---------
+
+def _patch_keys(monkeypatch, *, gemini="", cohere=""):
+    """把兩支金鑰打成指定值（預設清空 → 0 外呼）。"""
+    from polaris.llm import gemini as gemini_mod
+    from polaris.retrieval import rerank as rerank_mod
+
+    monkeypatch.setattr(gemini_mod.settings, "gemini_api_key", gemini)
+    monkeypatch.setattr(rerank_mod.settings, "cohere_api_key", cohere)
+
+
+def test_build_retriever_bm25_only_without_keys(monkeypatch):
+    _patch_keys(monkeypatch)  # 兩支金鑰皆空
+
+    retriever = build_retriever()
+
+    # 無金鑰 → 不接 Gemini 向量、不接 Cohere rerank（0 外呼）
+    assert retriever.embedding_fn is None
+    assert retriever.reranker is None
+    # BM25 仍可用，檢索照常有結果
+    results = retriever.retrieve("AI 需求 營收")
+    assert results[0].id == "stub-2330-2024Q4-revenue"
+    assert "cohere_rerank" not in results[0].metadata.get("retrieval_channels", [])
+
+
+def test_build_retriever_wires_cohere_when_key_present(monkeypatch):
+    _patch_keys(monkeypatch, cohere="test-cohere-key")
+
+    retriever = build_retriever()
+
+    assert isinstance(retriever.reranker, CohereReranker)
+    assert retriever.reranker.model == "rerank-v4.0"
+    # 仍未建真 client（延遲到第一次 rerank）
+    assert retriever.reranker.client is None
+
+
+def test_build_retriever_wires_gemini_embedding_when_available(monkeypatch):
+    _patch_keys(monkeypatch)
+
+    class _FakeClient:
+        def embed(self, text):
+            return [0.1, 0.2, 0.3]
+
+    fake = _FakeClient()
+    # active_llm 在 build_retriever 內延遲 import，故 patch 來源模組屬性
+    monkeypatch.setattr("polaris.llm.gemini.active_llm", lambda: fake)
+
+    retriever = build_retriever()
+
+    assert retriever.embedding_fn == fake.embed
+
+
+def test_build_retriever_respects_top_k(monkeypatch):
+    _patch_keys(monkeypatch)
+
+    assert build_retriever(top_k=3).top_k == 3
+    # 未指定 → 取 settings.top_k（預設 8）
+    from polaris.config import settings
+
+    assert build_retriever().top_k == settings.top_k
