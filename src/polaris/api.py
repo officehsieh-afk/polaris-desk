@@ -115,8 +115,14 @@ class ResearchResponse(BaseModel):
 
 
 @app.get("/healthz", tags=["ops"])
+@app.get("/health", tags=["ops"])
 def healthz() -> dict[str, str]:
-    """Cloud Run 健康探針：證明套件 import + 設定載入（不含祕密）。"""
+    """健康探針：證明套件 import + 設定載入（不含祕密）。
+
+    暴露兩條路徑：``/healthz``（本地 / in-process）與 ``/health``。Cloud Run 的
+    Google Front End 會**攔截 `/healthz`**（在抵達容器前回自家 404），故雲端可達的
+    探針走 ``/health``（runbook §5）。
+    """
     return health_payload()
 
 

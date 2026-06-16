@@ -1,6 +1,7 @@
 # 上雲 Runbook — 後端 Cloud Run 部署（R2 · D20–22）
 
-> **狀態（2026-06-04）：prep-staged，尚未真部署。**
+> **狀態（2026-06-16）：✅ 已真部署上線。** Service URL `https://polaris-api-14326813937.asia-east1.run.app`（revision `polaris-api-00006-gcz`）；`BQ_DATASET=polaris_core` 接真資料，`/ask` 回真 chunk 引用（`origin=embedding`）、Compliance passed；least-privilege runtime SA `polaris-run` + `gemini-api-key` Secret。雲端健康探針＝`GET /health`（見下）。
+> _（原 prep-staged 紀錄保留供參。）_
 > 本文把「build → push → deploy → 祕密 → 健康探針」整條路徑備好、可重現，讓 D20–22
 > 真部署不必臨陣摸索（呼應 R2 風險對策「別把第一次上雲留到最後」）。
 >
@@ -21,7 +22,7 @@
 | 區域（region）| `asia-east1`（與 `polaris_core` / `gs://polaris-desk-raw` 同區，省跨區流量）|
 | Cloud Run 服務名 | `polaris-api` |
 | 容器埠 | 由 Cloud Run 以 `$PORT` 注入（`server.py` 會讀；本地預設 8000）|
-| 健康探針路徑 | `GET /healthz` |
+| 健康探針路徑 | `GET /health`（雲端）/ `GET /healthz`（本地）⚠️ Cloud Run 的 Google Front End 會攔截 `/healthz`，雲端一律用 `/health` |
 | 已開 API | `run`、`secretmanager`、`bigquery`、`storage`（R4 SOP §3.1 已開）|
 | 祕密 | 5 把金鑰走 **Secret Manager**（絕不烘進映像、不寫進 repo）|
 
@@ -114,7 +115,9 @@ bq update --dataset --source <(echo '{"access":[{"role":"READER","userByEmail":"
 
 ```bash
 URL=$(gcloud run services describe polaris-api --region asia-east1 --format='value(status.url)')
-curl -fsS "$URL/healthz"     # → {"status":"ok","app_env":"cloud","vector_backend":"bigquery",...}
+curl -fsS "$URL/health"      # → {"status":"ok","app_env":"cloud","vector_backend":"bigquery",...}
+# ⚠️ 用 /health，不要用 /healthz：Cloud Run 的 Google Front End 攔截 /healthz（在抵達
+#    容器前回自家 HTML 404）。app 兩條路徑都註冊，但雲端只有 /health 打得到容器。
 curl -fsS -X POST "$URL/ask" -H 'content-type: application/json' \
   -d '{"query":"台積電 2025Q1 毛利率"}'        # → {answer, compliance_status, citations, trace}
 curl -fsS -X POST "$URL/research" -H 'content-type: application/json' \
