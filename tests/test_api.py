@@ -25,6 +25,15 @@ class TestHealthz:
         assert r.status_code == 200
         assert r.json()["status"] == "ok"
 
+    def test_health_alias_returns_200_ok(self, client):
+        """`/health` mirrors `/healthz`. Cloud Run's Google Front End intercepts
+        the exact path `/healthz` (returns its own 404 before reaching the
+        container), so the cloud-reachable health probe must live at `/health`."""
+        r = client.get("/health")
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+        assert r.json() == client.get("/healthz").json()
+
 
 class TestAsk:
     def test_ask_returns_contract_shape(self, client):
