@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -18,11 +19,21 @@ from rank_bm25 import BM25Okapi
 from ..vectorstore import SearchResult, VectorStore, get_vector_store
 
 
+logger = logging.getLogger(__name__)
+
 EmbeddingFn = Callable[[str], list[float]]
 
 # Cohere rerank callable: (query, results, top_k) -> list[SearchResult]
 # Injected so tests never call the real Cohere API.
 RerankFn = Callable[[str, list[SearchResult], int], list[SearchResult]]
+
+# Sentinel principal for the default/unauthenticated caller (issue #32, review
+# follow-up). A namespaced value that cannot collide with a real owner id, so a
+# default caller sees public docs only — never owner-scoped docs that happen to
+# be owned by a placeholder string. Access logic is ``owner IS NULL OR
+# owner == viewer``; with this sentinel the right-hand side never matches a real
+# owner, leaving public (owner=None) docs as the only visible set.
+PUBLIC_VIEWER = "__public__"
 
 
 _FALLBACK_CORPUS = [
@@ -83,9 +94,13 @@ def _matches_filters(result: SearchResult, filters: dict | None) -> bool:
             return False
         if key == "viewer":
             # Owner-based access control (issue #32): public docs (owner=None) are always
-            # visible; owner-scoped docs only visible to the matching principal.
+            # visible; owner-scoped docs only visible to the matching principal.  This must
+            # agree with the store SQL filter (bigquery/pgvector) — both gate on owner AND
+            # confidential, so a confidential doc never leaks via the BM25 path either.
             owner = result.metadata.get("owner")
             if owner is not None and owner != value:
+                return False
+            if result.metadata.get("confidential") and owner != value:
                 return False
     return True
 
@@ -128,6 +143,7 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
 
     api_key = os.environ.get("COHERE_API_KEY", "")
     if not api_key:
+        logger.debug("COHERE_API_KEY not set; skipping rerank, keeping BM25+vector order")
         return results
     try:
         import cohere  # type: ignore[import-untyped]
@@ -162,6 +178,7 @@ def _cohere_rerank(query: str, results: list[SearchResult], top_k: int) -> list[
             )
         return reranked
     except Exception:  # noqa: BLE001 - rerank is optional; BM25+vector result stands
+        logger.warning("Cohere rerank failed; falling back to BM25+vector order", exc_info=True)
         return results
 
 
@@ -265,3 +282,66 @@ class HybridRetriever:
         reranker = self.rerank_fn if self.rerank_fn is not None else _cohere_rerank
         candidates = reranker(query, candidates, self.top_k)
         return candidates
+
+
+# ---------------------------------------------------------------------------
+# Deep Research search-fn bridge (SearchResult → Citation adapter)
+# ---------------------------------------------------------------------------
+
+def make_retriever_search_fn(
+    retriever: "HybridRetriever | None" = None,
+    *,
+    viewer: str = PUBLIC_VIEWER,
+    filters: dict | None = None,
+) -> "Callable[[str], list]":
+    """Return a ``SearchFn``-compatible callable backed by :class:`HybridRetriever`.
+
+    Adapts ``SearchResult → Citation`` so the result can be consumed by
+    :func:`~polaris.graph.deep_research.agent.run_deep_research`.
+
+    Viewer and any extra filters are merged and forwarded to
+    ``retriever.retrieve(..., filters={viewer: ..., ...})`` — the store enforces
+    owner-based access control (issue #32).
+
+    ``retriever`` is injected for tests; ``None`` uses the default
+    :class:`HybridRetriever` (BM25 + store from ``VECTOR_BACKEND`` env).
+    """
+    from polaris.graph.state import Citation
+
+    r = retriever if retriever is not None else HybridRetriever()
+    combined_filters: dict = {**(filters or {}), "viewer": viewer}
+
+    # Map retriever-internal origins onto the Citation literal. The retriever uses
+    # "vector" but Citation calls that channel "embedding"; anything unrecognised
+    # falls back to "bm25" so the adapter never raises a validation error.
+    _CITATION_ORIGINS = {"stub", "bm25", "embedding", "colpali", "rerank", "news"}
+
+    def _citation_origin(raw: str | None) -> str:
+        if raw == "vector":
+            return "embedding"
+        return raw if raw in _CITATION_ORIGINS else "bm25"
+
+    def _search(query: str) -> list:
+        return [
+            Citation(
+                source_id=sr.id,
+                snippet=sr.content,
+                origin=_citation_origin(sr.metadata.get("origin")),
+            )
+            for sr in r.retrieve(query, filters=combined_filters)
+        ]
+
+    return _search
+
+
+def active_search_fn(viewer: str = PUBLIC_VIEWER) -> "Callable[[str], list]":
+    """Active search fn for Deep Research: BM25 + vector + Cohere Rerank.
+
+    Mirrors :func:`~polaris.llm.gemini.active_llm` and
+    :func:`~polaris.compression.compressors.active_compressor`:
+
+    - CI / no credentials: BM25-only from fallback corpus, fully deterministic
+    - Production: BM25 + vector (``VECTOR_BACKEND``) + Cohere Rerank if key set
+    - viewer forwarded to store for owner-scoped filtering (issue #32)
+    """
+    return make_retriever_search_fn(viewer=viewer)
