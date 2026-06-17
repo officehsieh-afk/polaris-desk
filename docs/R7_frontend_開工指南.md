@@ -73,6 +73,25 @@ spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
 
 > 把這三段存成 `mocks/*.json`，UI 一律從 mock 讀；接真 API 時只換資料來源。
 
+### (d) 後端資料表欄位表（要直接讀結構化資料時看）
+§2(a)(b)(c) 是 **API 回應形狀**（語意問答 / research / alert，前端日常吃這個就夠）。
+若你要做**直接讀結構化表**的畫面（財務指標卡、事件時間軸、公司清單），後端共用庫
+`polaris-desk-team.polaris_core`（BigQuery）的完整欄位表在 **[`docs/R7_前端_資料表欄位表.md`](./R7_前端_資料表欄位表.md)**。重點：
+
+| 表 | 用途 | 可 filter |
+|---|---|---|
+| `chunks` | RAG 文字片段（+768 維向量） | `ticker`、`doc_type`(`major_news`/`transcript`/`news`)、`fiscal_period` |
+| `financial_metrics` | 財務指標 | `ticker`、`fiscal_period`(`2026Q2`…)、`metric_id`（`revenue`/`eps`/`net_income`… 14 種） |
+| `events` | 事件流 | `ticker`、`event_type`(`major_news`/`monthly_revenue`/`earnings_call`/`news`) |
+| `colpali_pages` | 整頁視覺向量 | `ticker`、`source_file`、`page_num` |
+| `company_dim` | ticker→公司中文名（join 用） | ✅ live（20 列）；直接 JOIN `USING (ticker)` |
+
+- **分層（決議：兩者都要）**：語意問答 / 引用 / alert → 走 API；結構化表（財務 / 事件 / 公司 / 整頁向量）→ 前端可直接讀 BQ。
+- **`chunks` 不要前端直讀**（有 `owner`／`confidential` 存取控制）→ 需要文字片段走 `/ask`、`/research`。
+- **Join key 一律 `ticker`**；公司中文名 JOIN `company_dim`。
+- `earnings_call_transcript` 表 live 不存在；transcript 已併進 `chunks`（`doc_type=transcript`）。
+- **API 契約別手抄** → FastAPI 自動產 `GET /openapi.json`、互動文件 `GET /docs`；用 `openapi-typescript` 生 TS 型別，零漂移。
+
 ## 3. 最短路徑（5 個畫面）
 1. **對話 + 引用 UI**（US1/SC-007）：輸入框 → 顯示 `answer` + 下方 `citations` 列表。
 2. **Citation Tracer**：點一條 citation → 跳到/highlight 對應原文（用 `source_id` 對應；mock 階段先跳到 snippet 卡片，**跳轉正確率要 100%**）。
@@ -80,14 +99,19 @@ spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
 4. **Alert Inbox**：讀 (c) 的 WatchdogAlert 陣列，`severity` 上色、`compliance_status=blocked` 標紅。
 5. **ReAct trace UI**：讀 (b) 的 `react_steps` 逐步畫「想→查→觀察」時間軸。
 
-## 4. ⚠️ 後端接口依賴（要跟 R2 敲）
-目前後端**沒有 HTTP API**，只有 CLI / Python 函式。要上線需要一支 **thin FastAPI**：
+## 4. ✅ 後端 HTTP API（已存在 —— 用法見 [`docs/API_使用指南.md`](./API_使用指南.md)）
+thin FastAPI 已實作（`src/polaris/api.py`），跑法 `python -m polaris.api`，互動文件 `/docs`、契約 `/openapi.json`：
 ```
 POST /ask        body {query}            → §2(a) JSON
 POST /research   body {question}         → §2(b) JSON
 GET  /alerts                             → §2(c) JSON 陣列
+GET  /companies                          → 公司清單（ticker→名稱/產業）
+GET  /financials ?ticker&period&metric   → 財務指標
+GET  /events     ?ticker&type            → 事件流 / 時間軸
 ```
-內部就是包 `build_workflow().invoke({"query": q})` / `run_deep_research(q)`。**誰寫先講好**（R2 owns 前後端接口；你也可自告奮勇寫，反正你最懂前端要什麼）。**在它出現前，你用 mock 全速開發。**
+- 語意問答（`/ask`、`/research`）內部包 `build_workflow().invoke(...)` / `run_deep_research(...)`；無金鑰走 fallback（token-free）。
+- 結構化端點（`/companies`、`/financials`、`/events`）直讀 `polaris_core`（見 §2(d) + 欄位表）。
+- **完整用法、參數、curl 範例**：[`docs/API_使用指南.md`](./API_使用指南.md)。仍可先用 mock 開發，再切真 API。
 
 ## 5. DoD（照順序勾）
 - [ ] 技術選型拍板（Chainlit 核心 + Next.js Landing）
