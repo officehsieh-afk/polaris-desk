@@ -21,11 +21,23 @@ const TAB_KEYWORDS: Record<string, string> = {
   "財務": "financial",
   "損益": "financial",
   "毛利": "financial",
+  "營收": "financial",
+  "EPS": "financial",
+  "eps": "financial",
+  "獲利": "financial",
   "法說": "calls",
   "call": "calls",
+  "transcript": "calls",
+  "逐字稿": "calls",
+  "說法": "calls",
   "新聞": "news",
+  "重大訊息": "news",
+  "公告": "news",
   "估值": "valuation",
   "估值倍數": "valuation",
+  "PE": "valuation",
+  "本益比": "valuation",
+  "PB": "valuation",
 };
 
 export interface ParsedQuery {

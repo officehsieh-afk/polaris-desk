@@ -6,9 +6,10 @@
 import { USE_MOCK, API_BASE } from "./config";
 import {
   normalizeAlerts, normalizeAsk, normalizeResearch, normalizeComparison, normalizeNews,
-  normalizeLibrary, normalizeHistoryItem, normalizeNotifications,
+  normalizeLibrary, normalizeNotifications,
   normalizeResolve, normalizeWatchItem, normalizeCompany,
 } from "./adapters";
+import { historyStore } from "./historyStore";
 
 async function mockFetch(mock: string): Promise<unknown> {
   await new Promise((r) => setTimeout(r, 400));
@@ -73,8 +74,27 @@ export const api = {
   },
 
   async news() {
-    const raw = await get("news", "/news") as any;
-    return normalizeNews(raw);
+    if (USE_MOCK) {
+      const raw = await get("news", "/news") as any;
+      return normalizeNews(raw);
+    }
+    const raw = await realFetch("/events?type=news&limit=100") as any[];
+    const items = raw.map(e => ({
+      id: e.event_id as string,
+      cite: e.ticker ?? "",
+      title: e.title ?? "",
+      summary: "",
+      time: e.published_at ?? "",
+      tags: e.ticker ? [e.ticker as string] : [],
+      url: e.source_url ?? undefined,
+    }));
+    const tickerCounts: Record<string, number> = {};
+    items.forEach(item => item.tags.forEach((t: string) => { tickerCounts[t] = (tickerCounts[t] ?? 0) + 1; }));
+    const tabs = [
+      { id: "all", label: "全部", count: items.length },
+      ...Object.entries(tickerCounts).map(([ticker, count]) => ({ id: ticker, label: ticker, count })),
+    ];
+    return { updated: new Date().toLocaleDateString("zh-TW"), tabs, items };
   },
 
   async library() {
@@ -83,8 +103,7 @@ export const api = {
   },
 
   async history() {
-    const raw = await get("history", "/history") as any[];
-    return raw.map(normalizeHistoryItem);
+    return historyStore.read();
   },
 
   async watch() {

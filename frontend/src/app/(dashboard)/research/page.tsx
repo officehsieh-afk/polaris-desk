@@ -1,5 +1,7 @@
 ﻿"use client";
 import { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { mutate } from "swr";
 import { Icon } from "@/components/ui/Icon";
 import { KpiCard } from "@/components/polaris/KpiCard";
 import { AlertItem } from "@/components/polaris/AlertItem";
@@ -16,6 +18,8 @@ import { useSuggestions } from "@/hooks/useSuggestions";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
+import { historyStore, extractTickers } from "@/lib/historyStore";
+import { toast } from "sonner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const PHASES = ["理解查詢意圖","檢索文件庫","重排序候選","計算 + 交叉驗證","生成摘要","合規檢查"];
@@ -89,6 +93,7 @@ export default function ResearchPage() {
   const { trigger, data, isMutating } = useResearch();
   const { data: alerts } = useAlerts();
   const rs = useReadStore();
+  const router = useRouter();
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions();
   const contraAlerts = useContraAlerts();
   const chips = dynamicSuggestions ?? PRESETS;
@@ -175,6 +180,10 @@ export default function ResearchPage() {
     try {
       const result = await trigger(q ?? query);
 
+      historyStore.write({ page: "research", query: q ?? query, tags: extractTickers(q ?? query) });
+      mutate("history");
+      toast.success("已儲存至對話紀錄");
+
       // 切換至階段二：清除 interval，snap 到 30%，再依真實步數推進
       clearInterval(intervalRef.current); intervalRef.current = null;
       setProgress(p => Math.max(p, 30));
@@ -189,8 +198,6 @@ export default function ResearchPage() {
       });
       timers.current.push(setTimeout(() => setPhase("done"), 220 * total + 300));
 
-      // 研究完成後自動跑第一次矛盾偵測
-      runContradictionCheck(result?.kpis ?? [], result?.summary ?? []);
     } catch {
       if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       setPhase("done");
@@ -293,8 +300,7 @@ export default function ResearchPage() {
             )}
             <div className="actions">
               <button className="btn" disabled={!data} title={!data ? "請先執行研究" : undefined} onClick={()=>setShowReport(true)}><Icon name="file" size={15}/>完整報告</button>
-              <button className="btn" disabled={!data || isCheckingContra || running} onClick={()=>runContradictionCheck()}><Icon name="alert" size={15}/>{isCheckingContra ? "偵測中…" : "矛盾偵測"}</button>
-              <button className="btn"><Icon name="scale" size={15}/>送同業比較</button>
+              <button className="btn" disabled={!query} onClick={()=>{ toast("已帶入同業比較"); router.push(`/peer?q=${encodeURIComponent(query)}`); }}><Icon name="scale" size={15}/>送同業比較</button>
               <button className="btn ghost" disabled={running} onClick={()=>run()}><Icon name="refresh" size={15}/>重新分析</button>
             </div>
           </div>
@@ -305,7 +311,7 @@ export default function ResearchPage() {
                 <span className="panel-meta">ReAct</span>
               </div>
               {phase === "idle" ? (
-                <div className="chart-empty" style={{padding:"20px 0"}}>
+                <div className="chart-empty" style={{padding:"20px 16px"}}>
                   <span>執行研究後顯示模型思考路徑</span>
                 </div>
               ) : (
@@ -329,7 +335,7 @@ export default function ResearchPage() {
                         onClick={()=>{setSelectedAlertIdx(selectedAlertIdx===i?null:i);rs.markRead(a.id);}}
                         onDoubleClick={()=>{setModalAlert(a);rs.markRead(a.id);}}/>
                     ))
-                  : <div className="chart-empty" style={{padding:"20px 0"}}>
+                  : <div className="chart-empty" style={{padding:"20px 16px"}}>
                       <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
                       <span>{hasQueried ? "本次研究未發現異常訊號" : "執行研究後顯示相關警示"}</span>
                     </div>
@@ -339,9 +345,14 @@ export default function ResearchPage() {
             <div className="panel ctx-panel">
               <div className="panel-head">
                 <span className="panel-title"><Icon name="quote" size={14} style={{color:"rgb(var(--primary))",verticalAlign:"-2px",marginRight:6}}/>引用追蹤器</span>
-                <span className="panel-meta">100% 可溯源</span>
+                {citations.length > 0 && <span className="panel-meta">100% 可溯源</span>}
               </div>
-              <CitationList citations={citations} onOpen={handleOpenDoc}/>
+              {citations.length > 0
+                ? <CitationList citations={citations} onOpen={handleOpenDoc}/>
+                : <div className="chart-empty" style={{padding:"20px 16px"}}>
+                    <span>{hasQueried ? "本次研究無引用來源" : "執行研究後顯示引用來源"}</span>
+                  </div>
+              }
             </div>
           </aside>
         </div>

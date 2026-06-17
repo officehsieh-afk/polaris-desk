@@ -9,7 +9,8 @@ interface SuggestionsData {
   is_generating: boolean;
 }
 
-export function useSuggestions() {
+export function useSuggestions(options?: { mode?: "research" | "peer" }) {
+  const mode = options?.mode ?? "research";
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [fading, setFading] = useState(false);
   const prevSource = useRef<"rule" | "llm" | null>(null);
@@ -18,7 +19,7 @@ export function useSuggestions() {
 
   const fetchSuggestions = async (isRefetch: boolean) => {
     try {
-      const res = await fetch(`${API_BASE}/suggestions`);
+      const res = await fetch(`${API_BASE}/suggestions?mode=${mode}`);
       if (!res.ok) return;
       const data: SuggestionsData = await res.json();
 

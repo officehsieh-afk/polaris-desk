@@ -1,5 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
+import { mutate } from "swr";
+import { historyStore } from "@/lib/historyStore";
 import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
 import { CitationList } from "@/components/polaris/CitationList";
@@ -11,6 +13,8 @@ import { useAlerts } from "@/hooks/useAlerts";
 import { useReadStore } from "@/hooks/useReadStore";
 import { useCompanies } from "@/hooks/useCompanies";
 import { useContraAlerts } from "@/hooks/useContraAlerts";
+import { useSuggestions } from "@/hooks/useSuggestions";
+import { toast } from "sonner";
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import { parseQuery } from "@/lib/peer";
 import type { ReActStepVM, CompanyVM, KpiVM, SummaryItemVM } from "@/types/viewmodel";
@@ -25,6 +29,7 @@ const PRESETS = [
   "聯發科與聯詠估值比較",
 ];
 const PHASES = ["解析查詢意圖","檢索 A 公司文件","檢索 B 公司文件","交叉比對指標","生成比較摘要","合規檢查"];
+const PERIOD_OPTIONS = ["2026Q1","2025Q4","2025Q3","2025Q2","2025Q1","2024Q4"];
 const MOCK_REACT: ReActStepVM[] = [
   { type:"THINK", text:"解析兩間公司比較意圖，規劃：分別取法說稿與財報交叉驗證。", tool:false },
   { type:"ACT",   text:'retriever.search("A 公司 法說會 財報")', tool:true },
@@ -67,6 +72,25 @@ function buildPeerReportSummary(aName: string, bName: string): SummaryItemVM[] {
     { text:`${aName} 營收 YoY +39%，成長動能優於 ${bName}（+17%）。`, cite:"", page:"" },
     { text:"本比較為事實對比，非投資建議；數據待後端接入後自動更新。", cite:"", page:"" },
   ];
+}
+
+// ── Trend Panel ──────────────────────────────────────────────
+
+function TrendPanel({ aName, bName }: { aName: string; bName: string }) {
+  return (
+    <div className="panel">
+      <div className="panel-head">
+        <span className="panel-title">
+          <Icon name="arrowUp" size={15} style={{ color: "rgb(var(--primary))", verticalAlign: "-3px", marginRight: 6 }}/>
+          毛利率趨勢對比
+        </span>
+        <span className="panel-meta">待接後端</span>
+      </div>
+      <div className="chart-empty" style={{ padding: "28px 16px" }}>
+        <span>{aName} vs {bName} · 近 6 季趨勢，等 R3 交付 POST /peer-compare trend 欄位後顯示</span>
+      </div>
+    </div>
+  );
 }
 
 // ── Peer Summary Panel ────────────────────────────────────────
@@ -122,11 +146,11 @@ function PeerKpiGrid({ aName, bName }: { aName:string; bName:string }) {
 
 function FinancialBlock({ aName, bName }: { aName:string; bName:string }) {
   const rows = [
-    { metric:"營收（十億美元）", a:"23.5", b:"—", note:"" },
-    { metric:"毛利率",           a:"57.8%", b:"—", note:"" },
-    { metric:"營業利益率",       a:"47.5%", b:"—", note:"" },
-    { metric:"研發費用率",       a:"7.8%",  b:"—", note:"" },
-    { metric:"資本支出（十億美元）", a:"6.4", b:"—", note:"" },
+    { metric:"營收",     a:"23.5", b:"—", note:"" },
+    { metric:"毛利率",   a:"57.8%", b:"—", note:"" },
+    { metric:"營業利益率", a:"47.5%", b:"—", note:"" },
+    { metric:"研發費用率", a:"7.8%",  b:"—", note:"" },
+    { metric:"資本支出", a:"6.4", b:"—", note:"" },
   ];
   return (
     <div className="panel">
@@ -141,23 +165,39 @@ function FinancialBlock({ aName, bName }: { aName:string; bName:string }) {
   );
 }
 
-function CallsBlock({ aName, bName }: { aName:string; bName:string }) {
+function CallsBlock({ aName, bName, onOpen }: { aName:string; bName:string; onOpen:(doc:DocContent)=>void }) {
   const rows = [
-    { topic:"AI / HPC 需求", aStance:"強勁", aTone:"pos", aQuote:"AI 與伺服器需求帶動成長。", bStance:"—", bTone:"neu", bQuote:"待接後端" },
-    { topic:"資本支出",      aStance:"高檔", aTone:"neu", aQuote:"全年資本支出維持高檔。",    bStance:"—", bTone:"neu", bQuote:"待接後端" },
-    { topic:"毛利展望",      aStance:"走升", aTone:"pos", aQuote:"良率改善，毛利率季增。",    bStance:"—", bTone:"neu", bQuote:"待接後端" },
+    { topic:"AI / HPC 需求", aStance:"強勁", aTone:"pos", aQuote:"AI 與伺服器需求帶動成長。", aSourceId:"", bStance:"—", bTone:"neu", bQuote:"待接後端", bSourceId:"" },
+    { topic:"資本支出",      aStance:"高檔", aTone:"neu", aQuote:"全年資本支出維持高檔。",    aSourceId:"", bStance:"—", bTone:"neu", bQuote:"待接後端", bSourceId:"" },
+    { topic:"毛利展望",      aStance:"走升", aTone:"pos", aQuote:"良率改善，毛利率季增。",    aSourceId:"", bStance:"—", bTone:"neu", bQuote:"待接後端", bSourceId:"" },
   ];
+  const openQuote = (name: string, quote: string, sourceId: string) => {
+    if (!sourceId) return;
+    onOpen({ key: sourceId, title: `${name} 法說逐字稿`, kind: "transcript", source_id: sourceId, page: "", trust: "mid", highlight: quote, body: [quote] });
+  };
   return (
     <div className="panel">
-      <div className="panel-head"><span className="panel-title">法說會主題矩陣</span><span className="panel-meta">待接後端</span></div>
+      <div className="panel-head"><span className="panel-title">法說會</span><span className="panel-meta">待接後端</span></div>
       <div className="panel-body">
         <div className="cmatrix">
           <div className="cm-head"><span>主題</span><span>{aName}</span><span>{bName}</span></div>
           {rows.map((r,i) => (
             <div key={i} className="cm-row">
               <div className="cm-topic">{r.topic}</div>
-              <div className="cm-cell"><span className={"tag "+r.aTone}>{r.aStance}</span><div className="cm-quote">{r.aQuote}</div></div>
-              <div className="cm-cell"><span className={"tag "+r.bTone}>{r.bStance}</span><div className="cm-quote">{r.bQuote}</div></div>
+              <div className="cm-cell">
+                <span className={"tag "+r.aTone}>{r.aStance}</span>
+                <div className="cm-quote">
+                  {r.aQuote}
+                  {r.aSourceId && <button className="cm-cite-btn" onClick={() => openQuote(aName, r.aQuote, r.aSourceId)}><Icon name="quote" size={11}/>查看</button>}
+                </div>
+              </div>
+              <div className="cm-cell">
+                <span className={"tag "+r.bTone}>{r.bStance}</span>
+                <div className="cm-quote">
+                  {r.bQuote}
+                  {r.bSourceId && <button className="cm-cite-btn" onClick={() => openQuote(bName, r.bQuote, r.bSourceId)}><Icon name="quote" size={11}/>查看</button>}
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -169,13 +209,13 @@ function CallsBlock({ aName, bName }: { aName:string; bName:string }) {
 function NewsBlock({ aName, bName }: { aName:string; bName:string }) {
   return (
     <div className="panel">
-      <div className="panel-head"><span className="panel-title">新聞情緒</span><span className="panel-meta">待接後端</span></div>
+      <div className="panel-head"><span className="panel-title">新聞</span><span className="panel-meta">待接後端</span></div>
       <div className="panel-body">
         <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
           {[aName, bName].map((name,i) => (
             <div key={i} style={{flex:1,minWidth:180}}>
               <div style={{fontWeight:600,marginBottom:8}}>{name}</div>
-              <div className="chart-empty" style={{padding:"16px 0"}}><span>情緒數據待接後端</span></div>
+              <div className="chart-empty" style={{padding:"16px 16px"}}><span>情緒數據待接後端</span></div>
             </div>
           ))}
         </div>
@@ -193,7 +233,7 @@ function ValuationBlock({ aName, bName }: { aName:string; bName:string }) {
   ];
   return (
     <div className="panel">
-      <div className="panel-head"><span className="panel-title">估值倍數</span><span className="panel-meta">待接後端</span></div>
+      <div className="panel-head"><span className="panel-title">估值</span><span className="panel-meta">待接後端</span></div>
       <div className="panel-body">
         <table className="ptable">
           <thead><tr><th>指標</th><th>{aName}</th><th>{bName}</th><th>備註</th></tr></thead>
@@ -252,10 +292,13 @@ export default function PeerPage() {
   const rs = useReadStore();
   const companies = useCompanies();
   const contraAlerts = useContraAlerts();
+  const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions({ mode: "peer" });
+  const chips = dynamicSuggestions ?? PRESETS;
 
   const [aId, setAId] = useState("");
   const [bId, setBId] = useState("");
   const [tab, setTab] = useState("financial");
+  const [fiscalPeriod, setFiscalPeriod] = useState("2026Q1");
   const [query, setQuery] = useState("");
   const [hasQueried, setHasQueried] = useState(false);
   const [parseMsg, setParseMsg] = useState({ ignored:[] as string[], unknown:[] as string[] });
@@ -334,6 +377,8 @@ export default function PeerPage() {
     if (ok[0]) setAId(ok[0].id);
     if (ok[1]) setBId(ok[1].id);
     if (res.tab) switchTab(res.tab);
+    const normPeriod = res.period.replace(/\s+/g, "");
+    if (PERIOD_OPTIONS.includes(normPeriod)) setFiscalPeriod(normPeriod);
     setParseMsg({
       ignored: ok.slice(2).map(o => o.name),
       unknown: res.ordered.filter(o => o.status === "nodata").map(o => o.name),
@@ -359,6 +404,10 @@ export default function PeerPage() {
       // 模擬 API 延遲（後端 /peer-compare 接好後替換）
       await new Promise<void>(resolve => setTimeout(resolve, 1000));
 
+      historyStore.write({ page: "peer", query: q ?? query, tags: [nextAId, nextBId].filter(Boolean) });
+      mutate("history");
+      toast.success("已儲存至對話紀錄");
+
       clearInterval(intervalRef.current!); intervalRef.current = null;
       setProgress(p => Math.max(p, 30));
 
@@ -383,7 +432,7 @@ export default function PeerPage() {
   const renderBlock = () => {
     const aName = A?.name ?? ""; const bName = B?.name ?? "";
     if (tab==="financial") return <FinancialBlock aName={aName} bName={bName}/>;
-    if (tab==="calls")     return <CallsBlock aName={aName} bName={bName}/>;
+    if (tab==="calls")     return <CallsBlock aName={aName} bName={bName} onOpen={(doc) => setOpenDoc(doc)}/>;
     if (tab==="news")      return <NewsBlock aName={aName} bName={bName}/>;
     if (tab==="valuation") return <ValuationBlock aName={aName} bName={bName}/>;
     return null;
@@ -425,12 +474,18 @@ export default function PeerPage() {
                   <span key={i} className="parse-chip warn"><Icon name="alert" size={12}/>未識別：{n}</span>
                 ))}
               </div>
+              <div className="ptb-period">
+                <select value={fiscalPeriod} onChange={e => setFiscalPeriod(e.target.value)}>
+                  {PERIOD_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
             </div>
 
             {/* Comparison content */}
             {hasQueried && readyToCompare ? (
               <>
                 <div className="peer-l2"><PeerKpiGrid aName={A?.name??""} bName={B?.name??""}/></div>
+                <TrendPanel aName={A?.name??""} bName={B?.name??""}/>
                 <PeerSummaryPanel aName={A?.name??""} bName={B?.name??""}/>
                 <div className="news-tabs peer-tabs">
                   {PEER_TABS.map(t => (
@@ -452,10 +507,6 @@ export default function PeerPage() {
               <button className="btn" disabled={!hasQueried} onClick={() => setShowReport(true)}>
                 <Icon name="file" size={15}/>完整報告
               </button>
-              <button className="btn" disabled={!hasQueried || isCheckingContra || running}
-                onClick={() => runContraCheck(A?.name??"", B?.name??"")}>
-                <Icon name="alert" size={15}/>{isCheckingContra ? "偵測中…" : "矛盾偵測"}
-              </button>
               <button className="btn ghost" disabled={running || !readyToCompare} onClick={() => runQuery()}>
                 <Icon name="refresh" size={15}/>重新分析
               </button>
@@ -470,7 +521,7 @@ export default function PeerPage() {
                 <span className="panel-meta">ReAct</span>
               </div>
               {phase === "idle" ? (
-                <div className="chart-empty" style={{padding:"20px 0"}}>
+                <div className="chart-empty" style={{padding:"20px 16px"}}>
                   <span>執行比較後顯示模型思考路徑</span>
                 </div>
               ) : (
@@ -495,7 +546,7 @@ export default function PeerPage() {
                         onClick={() => { setSelectedAlertIdx(selectedAlertIdx===i?null:i); rs.markRead(a.id); }}
                         onDoubleClick={() => { setModalAlert(a); rs.markRead(a.id); }}/>
                     ))
-                  : <div className="chart-empty" style={{padding:"20px 0"}}>
+                  : <div className="chart-empty" style={{padding:"20px 16px"}}>
                       <Icon name="shield" size={18} style={{color:"rgb(var(--muted))",marginBottom:6}}/>
                       <span>{hasQueried ? "本次比較未發現異常訊號" : "執行比較後顯示相關警示"}</span>
                     </div>
@@ -510,7 +561,7 @@ export default function PeerPage() {
               </div>
               {hasQueried
                 ? <CitationList citations={[]} onOpen={() => {}}/>
-                : <div className="chart-empty" style={{padding:"20px 0"}}>
+                : <div className="chart-empty" style={{padding:"20px 16px"}}>
                     <span>執行比較後顯示引用來源</span>
                   </div>
               }
@@ -522,8 +573,8 @@ export default function PeerPage() {
       {/* Dock */}
       <div className="dock">
         <div className="dock-inner">
-          <div className="dock-chips">
-            {PRESETS.map((p,i) => <button key={i} className="chip" onClick={() => { setQuery(p); runQuery(p); }}>{p}</button>)}
+          <div className={`dock-chips${chipsFading ? " chips-fading" : ""}`}>
+            {chips.map((p,i) => <button key={i} className="chip" onClick={() => { setQuery(p); runQuery(p); }}>{p}</button>)}
           </div>
           <div className="dock-row">
             <Icon name="spark" size={18} style={{color:"rgb(var(--primary))",flexShrink:0}}/>

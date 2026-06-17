@@ -16,6 +16,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Icon, type IconName } from "@/components/ui/Icon";
+import { Toaster } from "@/components/ui/sonner";
 
 type NavItem = { href: string; label: string; icon: IconName; badge?: boolean };
 
@@ -119,7 +120,6 @@ export function AppShell({
         </Link>
         <nav className="nav">
           {NAV_PRIMARY.map(renderNavItem)}
-          <div style={{ height: 12 }} />
           {NAV_SECONDARY.map(renderNavItem)}
         </nav>
         <div className="side-foot">
@@ -162,6 +162,8 @@ export function AppShell({
 
       {/* ── 主區：捲動 + 內距由 .page 控制 ── */}
       <main className="main">{children}</main>
+
+      <Toaster position="bottom-right" duration={2500} />
 
       {/* ── 手機底部導覽：<1230px 由 polaris.css 自動顯示（rail 同時隱藏）── */}
       <nav className="mobnav">

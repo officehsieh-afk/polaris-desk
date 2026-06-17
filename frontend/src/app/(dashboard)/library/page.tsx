@@ -3,19 +3,28 @@ import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import useSWR from "swr";
 import { api } from "@/lib/api";
+import { useCompanies } from "@/hooks/useCompanies";
 
 const SOURCES = ["all","財報","法說會","逐字稿","績效報告"];
 
 export default function LibraryPage() {
   const { data, isLoading } = useSWR("library", ()=>api.library());
+  const companies = useCompanies();
   const [typeTab, setTypeTab] = useState("all");
+  const [tickerTab, setTickerTab] = useState("all");
   const [source, setSource] = useState("all");
 
   const types = data?.types ?? [];
   const allDocs = data?.docs ?? [];
+
+  // build ticker tabs from companies that have at least one doc
+  const docCompanies = new Set(allDocs.map(d => d.company));
+  const tickerTabs = companies.filter(c => docCompanies.has(c.name));
+
   const docs = allDocs.filter(d=>{
     const typeOk = typeTab==="all" || d.kind===types.find(t=>t.id===typeTab)?.label;
-    return typeOk;
+    const tickerOk = tickerTab==="all" || d.company===companies.find(c=>c.id===tickerTab)?.name;
+    return typeOk && tickerOk;
   });
 
   return (
@@ -33,6 +42,16 @@ export default function LibraryPage() {
                 <div style={{fontSize:13,color:"rgb(var(--muted))",marginBottom:4}}>{s.label}</div>
                 <div className="font-display" style={{fontSize:24,fontWeight:700}}>{s.value}</div>
               </div>
+            ))}
+          </div>
+        )}
+        {tickerTabs.length > 0 && (
+          <div className="news-tabs" style={{marginBottom:8}}>
+            <button className={"news-tab"+(tickerTab==="all"?" active":"")} onClick={()=>setTickerTab("all")}>全部</button>
+            {tickerTabs.map(c=>(
+              <button key={c.id} className={"news-tab"+(c.id===tickerTab?" active":"")} onClick={()=>setTickerTab(c.id)}>
+                {c.name}<span className="font-mono" style={{fontSize:11,marginLeft:4,color:"rgb(var(--muted))"}}>{c.id}</span>
+              </button>
             ))}
           </div>
         )}

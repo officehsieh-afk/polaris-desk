@@ -2,10 +2,20 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { api } from "@/lib/api";
+import { useCompanies } from "@/hooks/useCompanies";
+
+function fmtDate(s: string): string {
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return s;
+  return `${parseInt(m[2])}月${parseInt(m[3])}日`;
+}
 
 export default function NewsPage() {
   const { data, isLoading } = useSWR("news", () => api.news());
+  const companies = useCompanies();
   const [tab, setTab] = useState("all");
+
+  const tickerToName = Object.fromEntries(companies.map(c => [c.id, c.name]));
 
   const tabs = data?.tabs ?? [{ id: "all", label: "全部", count: 0 }];
   const items = (data?.items ?? []).filter(
@@ -33,7 +43,7 @@ export default function NewsPage() {
               className={"news-tab" + (t.id === tab ? " active" : "")}
               onClick={() => setTab(t.id)}
             >
-              {t.label}
+              {t.id === "all" ? "全部" : (tickerToName[t.id] ?? t.label)}
               {t.count > 0 && (
                 <span className="font-mono" style={{ fontSize: 12, marginLeft: 4, color: "rgb(var(--muted))" }}>
                   {t.count}
@@ -50,7 +60,13 @@ export default function NewsPage() {
           <div className="news-feed">
             {items.map((item) => (
               <div key={item.id} className="news-item">
-                <div className="ni-source font-mono">{item.cite} · {item.time}</div>
+                <div className="ni-src">
+                  {tickerToName[item.cite] ?? item.cite}
+                  {tickerToName[item.cite] && (
+                    <span className="font-mono" style={{ marginLeft: 5, opacity: 0.6 }}>{item.cite}</span>
+                  )}
+                  {item.time && <> · {fmtDate(item.time)}</>}
+                </div>
                 {item.url ? (
                   <a
                     className="ni-title"
@@ -67,7 +83,7 @@ export default function NewsPage() {
                 {item.tags.length > 0 && (
                   <div className="ni-tags">
                     {item.tags.map((t, i) => (
-                      <span key={i} className="tag muted">{t}</span>
+                      <span key={i} className="tag muted">{tickerToName[t] ?? t}</span>
                     ))}
                   </div>
                 )}
