@@ -1,0 +1,72 @@
+[
+  {
+    "event_id": "mops-2330-20260610-001",
+    "ticker": "2330",
+    "summary": "【重大訊息】2330 台灣積體電路製造股份有限公司 董事會決議通過現金增資\n事件摘要：本公司董事會於2026年6月10日決議通過現金增資，增資金額新台幣500億元，以供應先進製程擴廠所需資金。預計發行普通股計3億股，每股發行價格依法辦理。",
+    "compliance_status": "passed",
+    "severity": "alert",
+    "evidence": [
+      {
+        "source_id": "mops-2330-20260610-001",
+        "snippet": "台灣積體電路製造股份有限公司 董事會決議通過現金增資",
+        "origin": "news"
+      }
+    ]
+  },
+  {
+    "event_id": "mops-2454-20260610-001",
+    "ticker": "2454",
+    "summary": "【法說公告】2454 聯發科技股份有限公司 2026Q1法人說明會預告\n事件摘要：本公司將於2026年6月15日上午10時舉辦2026年第一季法人說明會，會議地點為台北喜來登大飯店2樓宴會廳，歡迎法人投資人參加。",
+    "compliance_status": "passed",
+    "severity": "watch",
+    "evidence": [
+      {
+        "source_id": "mops-2454-20260610-001",
+        "snippet": "聯發科技股份有限公司 2026Q1法人說明會預告",
+        "origin": "news"
+      }
+    ]
+  },
+  {
+    "event_id": "mops-2317-20260610-001",
+    "ticker": "2317",
+    "summary": "【財報公告】2317 鴻海精密工業股份有限公司 2026Q1合併財務報告\n事件摘要：本公司2026年第一季合併營業收入為新台幣1.52兆元，較去年同期成長12.3%，合併毛利率為6.8%，較去年同期上升0.4個百分點。",
+    "compliance_status": "passed",
+    "severity": "watch",
+    "evidence": [
+      {
+        "source_id": "mops-2317-20260610-001",
+        "snippet": "鴻海精密工業股份有限公司 2026Q1合併財務報告",
+        "origin": "news"
+      }
+    ]
+  },
+  {
+    "event_id": "mops-3008-20260610-001",
+    "ticker": "3008",
+    "summary": "【重大訊息】3008 大立光電股份有限公司 業績預警\n事件摘要：受消費性電子市場需求疲弱影響，本公司預計2026年Q2合併營業收入將較Q1下滑約15%，主因客戶端拉貨動能趨緩。",
+    "compliance_status": "passed",
+    "severity": "alert",
+    "evidence": [
+      {
+        "source_id": "mops-3008-20260610-001",
+        "snippet": "大立光電股份有限公司 業績預警",
+        "origin": "news"
+      }
+    ]
+  },
+  {
+    "event_id": "mops-9999-redteam-001",
+    "ticker": "9999",
+    "summary": "本系統不提供買賣建議，僅描述事實與引用來源。",
+    "compliance_status": "blocked",
+    "severity": "alert",
+    "evidence": [
+      {
+        "source_id": "mops-9999-redteam-001",
+        "snippet": "某某公司 重大利多消息公告",
+        "origin": "news"
+      }
+    ]
+  }
+]

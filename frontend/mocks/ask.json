@@ -1,0 +1,136 @@
+{
+  "answer": "根據提供的引用片段，資料中並未明確記載台積電最近一季（2024年第四季或2025年第一季）的具體「毛利率」百分比。\n\n相關財務數據與主張整理如下：\n\n*   **營業利益率（Operating Margin）：** 2025年第一季營業利益率較前一季下降0.5個百分點，達48.5% [aa637764-c50c-49b0-a53a-98975904b3cd]。\n*   **長期毛利率目標：** 公司相信長期毛利率達到53%或更高是可實現的 [61298474-e779-48a7-99c5-bb186437877f]。\n*   **每股盈餘（EPS）：** 2024年第四季每股盈餘為新台幣14.45元 [mops_88dcc80ad0bc9483]；2025年第一季每股盈餘為新台幣13.94元 [aa637764-c50c-49b0-a53a-98975904b3cd]。\n*   **營收結構：** 2025年第一季，3奈米製程技術佔晶圓營收的22%，5奈米與7奈米分別佔36%與15% [aa637764-c50c-49b0-a53a-98975904b3cd]。\n\n註：引用片段 [6e12c798-9686-4c9d-96b0-10695ff66aaf] 中提及的「40%毛利率」係指聯詠（Novatek）管理層之目標，並非台積電之數據。",
+  "compliance_status": "passed",
+  "citations": [
+    {
+      "source_id": "mops_af86502735e10d2e",
+      "snippet": "台積公司2025年2月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_6a73a66c96ad9f08",
+      "snippet": "台積公司2024年12月營收報告",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_88dcc80ad0bc9483",
+      "snippet": "台積公司2024年第四季每股盈餘新台幣14.45元",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_a6d8ae1a3d97e831",
+      "snippet": "台積公司2025年1月營收報告與地震影響說明",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "mops_c43085669abcb3ba",
+      "snippet": "台積公司董事會決議",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "6e12c798-9686-4c9d-96b0-10695ff66aaf",
+      "snippet": "利率在過去兩年維持在 40%\n左右。那請問這是不是公司未來毛利率給投資人參考的方向嗎？\nSteve Wang:\n我想基本上營收成長呢跟毛利率呢是公司經營的兩大重要的目標。40 個 percent\n的毛利率呢，是公司的這個短期的目標。當然長期我們是希望呢能\u0000再努力這個提升。\nTony Tseng:\nAs your gross margin has maintained at 40% level over the past two years, will this\n40% be a reference point for your gross margin guidance in the future? Well as we\nmentioned a few times that the revenue growth and the gross margins are the two\nmajor KPIs for Novatek management. And gross margin of 40% is our near-term target,\nwhile for us, we do e",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "aa637764-c50c-49b0-a53a-98975904b3cd",
+      "snippet": "ke impact as well as the start of overseas dilution,\npartially offset by the cost improvement efforts.\nTotal operating expenses accounted for 10.2% of net revenue. Operating margin decreased 0.5-percentage-point sequentially to 48.5%. Overall,\nour first quarter EPS was TWD13.94 and ROE was 32.7%.\nNow let's move on to revenue by technology. 3-nanometer process technology contributed 22% of wafer revenue in the first quarter, while\n5-nanometer and 7-nanometer accounted for 36% and 15%, respectivel",
+      "origin": "embedding"
+    },
+    {
+      "source_id": "61298474-e779-48a7-99c5-bb186437877f",
+      "snippet": "g expansion plans, we believe a long-term gross margin of 53% and higher is achievable.\nNext, let me talk about our 2025 capital budget. At TSMC, a higher level of capital expenditures is always correlated with higher growth opportunities\nin the following years. We reiterate our 2025 capital budget is expected to be between USD38 billion and USD42 billion as we continue to invest\nto support customers' growth. About 70% of the capital budget will be allocated for advanced process technologies. Ab",
+      "origin": "embedding"
+    }
+  ],
+  "trace": [
+    {
+      "node_name": "planner",
+      "status": "ok",
+      "input_keys": [
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "period",
+        "plan"
+      ],
+      "error_message": null,
+      "elapsed_ms": 10585
+    },
+    {
+      "node_name": "retriever",
+      "status": "ok",
+      "input_keys": [
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "contexts"
+      ],
+      "error_message": null,
+      "elapsed_ms": 2798
+    },
+    {
+      "node_name": "calculator",
+      "status": "ok",
+      "input_keys": [
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "calculations"
+      ],
+      "error_message": null,
+      "elapsed_ms": 0
+    },
+    {
+      "node_name": "writer",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "contexts",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "citations",
+        "draft"
+      ],
+      "error_message": null,
+      "elapsed_ms": 13692
+    },
+    {
+      "node_name": "compliance",
+      "status": "ok",
+      "input_keys": [
+        "calculations",
+        "citations",
+        "contexts",
+        "draft",
+        "period",
+        "plan",
+        "query",
+        "trace",
+        "viewer"
+      ],
+      "output_keys": [
+        "answer",
+        "compliance_status"
+      ],
+      "error_message": null,
+      "elapsed_ms": 3494
+    }
+  ]
+}
