@@ -273,3 +273,25 @@ class TestAlerts:
         for alert in client.get("/alerts").json():
             for kw in forbidden:
                 assert kw not in alert["summary"]
+
+    def test_alerts_have_r7_frontend_fields(self, client):
+        # R7 #1：每筆 alert 保留既有欄位 + 新增 origin/title/source/time/stock_id
+        existing = {"event_id", "ticker", "summary", "compliance_status", "severity", "evidence"}
+        added = {"origin", "title", "source", "time", "stock_id"}
+        alerts = client.get("/alerts").json()
+        assert alerts
+        for alert in alerts:
+            assert existing <= alert.keys()          # 既有欄位未被移除
+            assert added <= alert.keys()             # 新欄位齊
+            for f in added:
+                assert isinstance(alert[f], str) and alert[f]  # 皆為非空字串
+            assert alert["stock_id"] == alert["ticker"]
+            assert alert["source"].startswith("MOPS")
+
+    def test_alerts_new_fields_no_buysell_leak(self, client):
+        # NFR-031：新增的 title / source 也不得外溢買賣關鍵字
+        from polaris.graph.compliance import BUYSELL_KEYWORDS
+        for alert in client.get("/alerts").json():
+            for kw in BUYSELL_KEYWORDS:
+                assert kw not in alert["title"]
+                assert kw not in alert["source"]

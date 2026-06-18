@@ -239,7 +239,11 @@ def notifications_demo() -> HTMLResponse:
 # --- Watchdog（specs/003）— R7 Alert Inbox 消費端 ----------------------------
 
 class AlertResponse(BaseModel):
-    """R7 Alert Inbox 契約（docs/R7_frontend_開工指南.md §2c）。欄位名一字不差。"""
+    """R7 Alert Inbox 契約（docs/R7_frontend_開工指南.md §2c）。欄位名一字不差。
+
+    既有欄位保留；新增 R7 #1 前端欄位（origin / title / source / time / stock_id），
+    讓研究助理 + 同業比較頁的「監控系統警示」面板能正確路由與顯示。
+    """
 
     event_id: str
     ticker: str
@@ -247,6 +251,12 @@ class AlertResponse(BaseModel):
     compliance_status: str
     severity: str
     evidence: list[Citation]
+    # --- R7 #1 前端欄位（新增，皆必填字串）---
+    origin: str          # 路由用："research" / "peer"（目前最小 fallback；見 alerts() 說明）
+    title: str           # 一行標題（passed 用事件 title；blocked / 含疑慮 → 安全 fallback）
+    source: str          # 來源描述，如 "MOPS · 2330 · 重大訊息"
+    time: str            # 事件時間（published_at ISO 字串；前端可再格式化 HH:mm）
+    stock_id: str        # 股票代碼（= ticker，R7 前端用此欄名）
 
 
 @app.get("/alerts", response_model=list[AlertResponse], tags=["watchdog"])
@@ -256,17 +266,34 @@ def alerts() -> list[AlertResponse]:
     R7 Alert Inbox 直接消費本端點；severity 上色、blocked 標紅。
     無 Gemini 金鑰時 Watchdog 走確定性 fallback（token=0）。
     """
-    return [
-        AlertResponse(
-            event_id=a.event_id,
-            ticker=a.ticker,
-            summary=a.summary,
-            compliance_status=a.compliance_status,
-            severity=a.severity,
-            evidence=a.evidence,
+    from polaris.graph.compliance import apply_compliance
+
+    out: list[AlertResponse] = []
+    for event in load_mock_events(_WATCHDOG_MOCK_EVENTS):
+        a = run_watchdog(event)
+        # R7 #1 前端欄位。title 採安全策略：僅在「alert 通過合規 且 標題本身不含買賣
+        # 關鍵字」時才回事件原標題，否則回安全 fallback（被攔公告原文不外溢，NFR-031）。
+        _, title_status = apply_compliance(event.title)
+        title = event.title if (a.compliance_status == "passed" and title_status == "passed") \
+            else "公告含合規疑慮，詳見來源"
+        out.append(
+            AlertResponse(
+                event_id=a.event_id,
+                ticker=a.ticker,
+                summary=a.summary,
+                compliance_status=a.compliance_status,
+                severity=a.severity,
+                evidence=a.evidence,
+                # origin 目前事件無明確頁面來源 → 最小可行 fallback "research"；
+                # 後續可由真實事件來源 / peer-compare 觸發補 "peer"（見 PR 說明）。
+                origin="research",
+                title=title,
+                source=f"MOPS · {event.ticker} · {event.doc_type}",
+                time=event.published_at.isoformat(),
+                stock_id=a.ticker,
+            )
         )
-        for a in (run_watchdog(e) for e in load_mock_events(_WATCHDOG_MOCK_EVENTS))
-    ]
+    return out
 
 
 # --- 結構化資料讀層（polaris_core 直讀，給前端財務卡 / 事件時間軸 / 公司清單）---
