@@ -14,11 +14,11 @@
 >    `https://polaris-api-14326813937.asia-east1.run.app`
 >    （`/health`、`/openapi.json`、`/ask`、`/research`、`/alerts` 實測全 200，契約欄位與 §2 一字不差）。
 > 3. ✅ **結構化端點也補齊**（PR #92）：`/companies`、`/financials`、`/events`（直讀 `polaris_core`）。
-> 4. ✅ **TS 型別 + 三份真實 mock 已備好** → [`../frontend/`](../frontend/)（`api-types/polaris-api.d.ts` + `mocks/{ask,research,alerts}.json`，皆為對 live 後端實打抓回）。
+> 4. ✅ **API 契約穩定**：TS 型別可由 live `/openapi.json` 生（`npx openapi-typescript`）；R7 前端已自帶 `public/mocks`。
 >
 > **所以你接下來該做的（關鍵路徑，都在你 in-scope）：**
 > 1. **拍板技術選型**（§1：Chainlit 核心 demo + Next.js Landing）。
-> 2. 從 [`../frontend/`](../frontend/) 拿型別 + mock，**做完 5 個畫面**（§3）。
+> 2. 用 live `/openapi.json` 生 TS 型別 + 既有 mock，**做完 5 個畫面**（§3）。
 > 3. **接 live API、換掉 mock**，但**保留 mock 當斷網 Plan B**（憲法 V）。
 > 4. **W4：Vercel 上雲 + Landing（配 R1 文案）+ Demo 備援影片定稿 + 斷網切換演練**。
 >
@@ -32,7 +32,7 @@
 
 ## 0. 為何不等後端
 - 後端的輸出**已經有確定形狀**（見 §2，都從現有程式碼抓出來的真欄位）→ 你照這形狀做 mock JSON，UI 先全做。
-- ~~真 API 還沒有 HTTP 端點~~ → **已不成立**：thin FastAPI 已上 Cloud Run（見上方狀態更新與 §4），且 [`../frontend/`](../frontend/) 已備好 TS 型別 + 真實 mock。你可以直接接真 API，或仍用 mock 先行、最後一步換真 API。
+- ~~真 API 還沒有 HTTP 端點~~ → **已不成立**：thin FastAPI 已上 Cloud Run（見上方狀態更新與 §4）。你可以直接接真 API，或仍用 mock 先行、最後一步換真 API。
 
 ## 1. 技術選型（先決定，省得改兩次）
 spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
@@ -127,7 +127,7 @@ spec 寫「Next.js / Chainlit」二選一或混用。給你的建議：
 
 > **Live（2026-06-16 起，G4 PASS）**：`https://polaris-api-14326813937.asia-east1.run.app`
 > 雲端健康探針走 `GET /health`（GFE 攔 `/healthz`）；互動文件 `/docs`、契約 `/openapi.json`。
-> 本機跑：`python -m polaris.api`。**TS 型別已生成** → [`../frontend/api-types/polaris-api.d.ts`](../frontend/api-types/polaris-api.d.ts)。
+> 本機跑：`python -m polaris.api`。**TS 型別**：`npx openapi-typescript <API_URL>/openapi.json -o src/types/api.ts`。
 
 端點：
 ```
@@ -144,7 +144,7 @@ GET  /events     ?ticker&type            → 事件流 / 時間軸
 
 ## 5. DoD（照順序勾）
 - [ ] 技術選型拍板（Chainlit 核心 + Next.js Landing）
-- [x] `mocks/*.json` 依 §2 三契約建好 — ✅ 已備好（真實 payload）於 [`../frontend/mocks/`](../frontend/mocks/)；TS 型別於 [`../frontend/api-types/`](../frontend/api-types/)
+- [x] `mocks/*.json` 依 §2 三契約建好 — ✅ R7 前端已自帶 `public/mocks`；TS 型別由 `/openapi.json` 生成
 - [ ] 對話+引用 UI 跑通（讀 mock）
 - [ ] Citation Tracer 點擊跳轉**正確率 100%**
 - [ ] Alert Inbox + ReAct trace UI（讀 mock (c)/(b)）
