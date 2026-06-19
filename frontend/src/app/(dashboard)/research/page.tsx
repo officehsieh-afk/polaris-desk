@@ -45,6 +45,7 @@ function buildMockContradictions(
       id: `contra-rev-${Date.now()}`,
       origin: "contradiction",
       level: "mid",
+      cite_key: revSum.cite,
       title: `${revKpi.label}：KPI 與摘要數字落差`,
       summary: `KPI 卡顯示「${revKpi.value}${revKpi.unit}」，摘要（${revSum.cite} ${revSum.page}）引述「中段 25% 以上」。同份法說來源但表述不一致，建議核對 ${revSum.cite} 原文。`,
       source: `矛盾偵測 · ${revSum.cite} vs KPI`,
@@ -100,6 +101,7 @@ export default function ResearchPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [restoredData, setRestoredData] = useState<typeof data>(undefined);
+  const [restoredAt, setRestoredAt] = useState<string | null>(null);
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions();
   const contraAlerts = useContraAlerts();
   const companies = useCompanies();
@@ -134,6 +136,7 @@ export default function ResearchPage() {
       setPhase("done");
       setProgress(100);
       setRestoredData(saved.result);
+      setRestoredAt(saved.time ?? null);
       sessionStorage.removeItem("polaris_restore");
     } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -291,6 +294,19 @@ export default function ResearchPage() {
               <div className="page-eyebrow">研究助理 · /research</div>
               <h1 className="page-title">研究分析</h1>
             </div>
+            {restoredData && (
+              <div className="mock-note" style={{ marginBottom: 0 }}>
+                <Icon name="clock" size={15} style={{ flexShrink: 0 }}/>
+                <span>
+                  此為歷史分析{restoredAt ? `（${restoredAt}）` : ""}，資料可能已有更新。
+                  <button
+                    className="btn ghost"
+                    style={{ marginLeft: 10, padding: "1px 10px", fontSize: 13, height: "auto" }}
+                    onClick={() => { setRestoredData(undefined); setRestoredAt(null); run(query); }}
+                  >重新查詢</button>
+                </span>
+              </div>
+            )}
             {!hasQueried ? (
               <div className="peer-empty">
                 <Icon name="spark" size={28} style={{color:"rgb(var(--muted))",marginBottom:12}}/>
@@ -325,9 +341,12 @@ export default function ResearchPage() {
                       {isMutating ? <PanelSkeleton/> : (
                         summary.length > 0 ? (
                           <ul className="summary">
-                            {summary.map((s,i)=>(
-                              <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} /><span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
-                            ))}
+                            {summary.map((s,i)=>{
+                              const hasContra = contraAlerts.some(a => a.level !== "info" && (a as any).cite_key === s.cite);
+                              return (
+                                <li key={s.cite + i}><span className="sum-marker"/><span><TextGenerate key={s.text} text={s.text} delay={i * 0.08} />{hasContra && <span className="tag mid" style={{marginLeft:5,padding:"1px 7px",fontSize:12,verticalAlign:"middle"}} title="矛盾偵測警告，建議核對引用原文"><span className="tdot"/>矛盾</span>}<span className="cchip" role="button" tabIndex={0} onClick={()=>handleOpenDoc(s.cite)} onKeyDown={e=>(e.key==="Enter"||e.key===" ")&&handleOpenDoc(s.cite)}>{s.cite==="fin"?"財報":"法說"} {s.page}</span></span></li>
+                              );
+                            })}
                           </ul>
                         ) : (
                           <div className="chart-empty">

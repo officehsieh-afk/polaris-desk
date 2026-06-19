@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
@@ -46,7 +45,7 @@ export default function HistoryPage() {
     if (session) {
       const full = await api.historyOne(item.id);
       if (full?.result) {
-        sessionStorage.setItem("polaris_restore", JSON.stringify({ id: item.id, query: full.query, page: full.page, result: full.result }));
+        sessionStorage.setItem("polaris_restore", JSON.stringify({ id: item.id, query: full.query, page: full.page, result: full.result, time: item.time }));
         router.push(`/${full.page}?historyId=${encodeURIComponent(item.id)}`);
         return;
       }
@@ -63,7 +62,7 @@ export default function HistoryPage() {
         <div className="page-head">
           <div className="page-eyebrow">對話紀錄 · /history</div>
           <h1 className="page-title">對話紀錄</h1>
-          <p className="page-desc">所有研究查詢與同業比較的歷史紀錄。</p>
+          <p className="page-desc">研究助理與同業比較的歷史紀錄。</p>
         </div>
         <div className="news-tabs">
           {FILTER_TABS.map(t => (

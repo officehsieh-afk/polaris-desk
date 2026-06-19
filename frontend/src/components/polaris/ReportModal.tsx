@@ -120,6 +120,30 @@ export function ReportModal({ query, kpis, summary, react, citations, onClose }:
         </div>
 
         <div className="report-content">
+          <section className="report-section" style={{ marginTop: 0, marginBottom: 20 }}>
+            <div style={{
+              display: "flex", gap: 10, alignItems: "flex-start",
+              padding: "12px 16px", borderRadius: 6,
+              background: "rgb(192 64 54 / 0.06)",
+              border: "1px solid rgb(192 64 54 / 0.25)",
+            }}>
+              <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: "rgb(192 64 54)", marginBottom: 5 }}>
+                  合規聲明 — NFR-031
+                </div>
+                <div style={{ fontSize: 13, lineHeight: 1.7, color: "rgb(23 25 31 / 0.75)" }}>
+                  本報告為事實性資料摘要，每項結論均附有可溯源之原始文件引用（法說會逐字稿、財務報表或新聞公告）。
+                  本報告<strong>不構成任何投資建議、買賣建議或對特定有價證券之推薦</strong>。
+                  投資決策應自行判斷並承擔相關風險。
+                </div>
+                <div style={{ fontSize: 12, color: "rgb(23 25 31 / 0.45)", marginTop: 5 }}>
+                  報告產出時間：{date}｜資料以產出當下為準，後續更新恕不另行通知。
+                </div>
+              </div>
+            </div>
+          </section>
+
           {kpis.length > 0 && (
             <section className="report-section">
               <h2 className="report-sec-title">關鍵指標</h2>

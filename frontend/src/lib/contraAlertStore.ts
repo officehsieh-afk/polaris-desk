@@ -4,7 +4,7 @@ import type { AlertVM } from "@/types/viewmodel";
 // Persists to sessionStorage so alerts survive same-session navigation.
 // Listeners fire synchronously for immediate cross-component updates.
 
-export type ContraAlert = AlertVM & { origin: "contradiction" };
+export type ContraAlert = AlertVM & { origin: "contradiction"; cite_key?: string };
 
 const KEY = "polaris_contra_alerts";
 type Listener = (alerts: ContraAlert[]) => void;
