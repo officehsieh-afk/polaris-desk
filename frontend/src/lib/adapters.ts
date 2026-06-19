@@ -4,7 +4,8 @@
 // ============================================================
 import type {
   AlertRaw, Severity, KpiRaw, SummaryItemRaw, ChartPointRaw,
-  ReactStepRaw, AskResponse, CompanyRaw, CompanyResponse,
+  ReactStepRaw, AskResponse, AskCitationRaw, NodeTraceRaw,
+  CompanyRaw, CompanyResponse,
   NewsItemRaw, NewsResponse, DocRaw, LibraryResponse,
   HistoryItemRaw, NotificationItemRaw, NotificationsResponse,
   ResolveResponse, WatchItemRaw, GroundedValue, CitationRaw,
@@ -66,21 +67,37 @@ function mapTraceToReact(steps: ReactStepRaw[]): ReActStepVM[] {
   return steps.map((s) => ({ type: s.type, text: s.text, tool: s.tool }));
 }
 
-export function normalizeAsk(raw: AskResponse): AskVM {
+function nodeTracesToReact(traces: NodeTraceRaw[]): ReActStepVM[] {
+  return traces.map((t) => ({
+    type: t.status === "error" ? "OBS" : "ACT",
+    text: t.status === "error" && t.error_message
+      ? `${t.node_name}: ${t.error_message}`
+      : t.node_name,
+    tool: true,
+  }));
+}
+
+function askCitationToTracker(c: AskCitationRaw, i: number): CitationTrackerVM {
+  const label = c.company ?? c.source_id;
+  const detail = c.snippet.length > 60 ? c.snippet.slice(0, 60) + "…" : c.snippet;
+  return { ix: String(i + 1), label, detail, cite: c.source_id, snippet: c.snippet, period: "" };
+}
+
+export function normalizeAsk(raw: AskResponse, query: string): AskVM {
+  const bullets = splitAnswer(raw.answer);
+  const summary: SummaryItemVM[] = bullets.map((text, i) => ({
+    text,
+    cite: raw.citations[i]?.source_id ?? raw.citations[0]?.source_id ?? "",
+    page: "",
+  }));
   return {
-    query: raw.query,
-    kpis: raw.kpis.map(normalizeKpi),
-    summary: raw.summary.map(normalizeSummaryItem),
-    chart: raw.chart,
-    react: mapTraceToReact(raw.react_steps),
-    citations: raw.citations.map((c, i) => ({
-      ix: String(i + 1),
-      label: c.src,
-      detail: c.page,
-      cite: c.src,
-      snippet: "",
-      period: "",
-    })),
+    query,
+    compliance_status: raw.compliance_status,
+    kpis: [],
+    summary,
+    chart: [],
+    react: nodeTracesToReact(raw.trace),
+    citations: raw.citations.map(askCitationToTracker),
   };
 }
 
@@ -267,5 +284,5 @@ export function normalizeResearch(raw: ResearchResponse, query: string): AskVM {
 
   const react: ReActStepVM[] = raw.react_steps.flatMap(expandReActStep);
 
-  return { query, kpis: [], summary, chart: [], react, citations };
+  return { query, compliance_status: raw.compliance_status, kpis: [], summary, chart: [], react, citations };
 }

@@ -1,6 +1,6 @@
 ﻿"use client";
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { mutate } from "swr";
 import { Icon } from "@/components/ui/Icon";
 import { KpiCard } from "@/components/polaris/KpiCard";
@@ -22,6 +22,7 @@ import { useFinancials, inferTickerFromQuery, financialsToKpis } from "@/hooks/u
 import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
 import { historyStore, extractTickers } from "@/lib/historyStore";
+import { api } from "@/lib/api";
 import { toast } from "sonner";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
@@ -97,6 +98,8 @@ export default function ResearchPage() {
   const { data: alerts } = useAlerts();
   const rs = useReadStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [restoredData, setRestoredData] = useState<typeof data>(undefined);
   const { suggestions: dynamicSuggestions, fading: chipsFading } = useSuggestions();
   const contraAlerts = useContraAlerts();
   const companies = useCompanies();
@@ -117,6 +120,25 @@ export default function ResearchPage() {
   const [showReport, setShowReport] = useState(false);
   const [ctxOpen, setCtxOpen] = useState(true);
 
+  // B 級還原：從 history 頁點進來時，讀 sessionStorage 直接復原結果
+  useEffect(() => {
+    const historyId = searchParams.get("historyId");
+    if (!historyId) return;
+    try {
+      const raw = sessionStorage.getItem("polaris_restore");
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (saved.id !== historyId) return;
+      setQuery(saved.query ?? "");
+      setHasQueried(true);
+      setPhase("done");
+      setProgress(100);
+      setRestoredData(saved.result);
+      sessionStorage.removeItem("polaris_restore");
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const startVoice = () => {
     const SR = (window as any).SpeechRecognition ?? (window as any).webkitSpeechRecognition;
     if (!SR) { alert("此瀏覽器不支援語音輸入，請改用 Chrome"); return; }
@@ -134,10 +156,11 @@ export default function ResearchPage() {
     rec.start();
   };
 
-  const kpis = data?.kpis ?? [];
-  const summary = data?.summary ?? [];
-  const reactSteps = data?.react ?? [];
-  const citations = data?.citations ?? [];
+  const displayData = restoredData ?? data;
+  const kpis = displayData?.kpis ?? [];
+  const summary = displayData?.summary ?? [];
+  const reactSteps = displayData?.react ?? [];
+  const citations = displayData?.citations ?? [];
 
   const { rows: financialRows, isLoading: isLoadingFinancials } = useFinancials(inferredTicker);
   const financialKpis = financialsToKpis(financialRows);
@@ -196,6 +219,7 @@ export default function ResearchPage() {
       const result = await trigger(q ?? query);
 
       historyStore.write({ page: "research", query: q ?? query, tags: extractTickers(q ?? query) });
+      api.postHistory("research", q ?? query, extractTickers(q ?? query), result);
       mutate("history");
       toast.success("已儲存至對話紀錄");
 
@@ -230,11 +254,15 @@ export default function ResearchPage() {
   const running = phase==="running";
   const total = reactSteps.length || 1;
   const curPhase = running ? PHASES[Math.min(Math.floor((stepN / total) * PHASES.length), PHASES.length - 1)] : null;
-  const handleOpenDoc = (cite: string) => {
+  const handleOpenDoc = async (cite: string) => {
+    // 先打真實 API（R3 實作後自動生效）
+    const chunk = await api.chunk(cite);
+    if (chunk) { setOpenDoc(chunk); return; }
+    // fallback：hardcoded demo mock
     if (DOC_CONTENTS[cite]) { setOpenDoc(DOC_CONTENTS[cite]); return; }
+    // fallback：從引用 VM 自行組裝
     const vm = citations.find(c => c.cite === cite);
     if (!vm) return;
-    // Q3: 從摘要中找到參照此引用的句子，提取關鍵詞做高亮
     const relatedText = summary.filter(s => s.cite === cite).map(s => s.text).join(" ");
     const hlTokens = relatedText
       .match(/[一-鿿]{2,}|[A-Z][a-zA-Z]+|[\d]+\.[\d]+%?/g)

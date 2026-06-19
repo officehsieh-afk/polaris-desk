@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { mutate } from "swr";
 import { historyStore } from "@/lib/historyStore";
+import { api } from "@/lib/api";
 import { Icon } from "@/components/ui/Icon";
 import { AlertItem } from "@/components/polaris/AlertItem";
 import { CitationList } from "@/components/polaris/CitationList";
@@ -430,6 +431,7 @@ export default function PeerPage() {
       await new Promise<void>(resolve => setTimeout(resolve, 1000));
 
       historyStore.write({ page: "peer", query: q ?? query, tags: [nextAId, nextBId].filter(Boolean) });
+      api.postHistory("peer", q ?? query, [nextAId, nextBId].filter(Boolean), null);
       mutate("history");
       toast.success("已儲存至對話紀錄");
 

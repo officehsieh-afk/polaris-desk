@@ -2,7 +2,9 @@
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
+import { useSession } from "next-auth/react";
 import { api } from "@/lib/api";
 import type { HistoryEntry } from "@/lib/historyStore";
 
@@ -36,7 +38,21 @@ function groupItems(items: HistoryEntry[]) {
 
 export default function HistoryPage() {
   const { data, isLoading } = useSWR("history", () => api.history());
+  const { data: session } = useSession();
+  const router = useRouter();
   const [filter, setFilter] = useState("all");
+
+  const handleItemClick = async (item: HistoryEntry) => {
+    if (session) {
+      const full = await api.historyOne(item.id);
+      if (full?.result) {
+        sessionStorage.setItem("polaris_restore", JSON.stringify({ id: item.id, query: full.query, page: full.page, result: full.result }));
+        router.push(`/${full.page}?historyId=${encodeURIComponent(item.id)}`);
+        return;
+      }
+    }
+    router.push(`/${item.page}?q=${encodeURIComponent(item.query)}`);
+  };
 
   const filtered = (data ?? []).filter(item => filter === "all" || item.page === filter);
   const groups = groupItems(filtered);
@@ -81,11 +97,11 @@ export default function HistoryPage() {
                   {group.label}
                 </div>
                 {group.items.map((item, i) => (
-                  <Link
+                  <button
                     key={item.id}
-                    href={"/" + item.page + "?q=" + encodeURIComponent(item.query)}
                     className="history-item"
-                    style={{ animationDelay: `${i * 45}ms` }}
+                    style={{ animationDelay: `${i * 45}ms`, width: "100%", textAlign: "left", background: "none", border: "none", cursor: "pointer" }}
+                    onClick={() => handleItemClick(item)}
                   >
                     <div className="ni-icon">
                       <Icon name={item.page === "peer" ? "scale" : "brain"} size={17} />
@@ -106,7 +122,7 @@ export default function HistoryPage() {
                       {item.tags.map((t, ti) => <span key={ti} className="tag muted" style={{ fontSize: 12 }}>{t}</span>)}
                     </div>
                     <Icon name="chevR" size={15} style={{ color: "rgb(var(--muted))", flexShrink: 0 }}/>
-                  </Link>
+                  </button>
                 ))}
               </div>
             ))}

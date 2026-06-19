@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -64,6 +65,10 @@ export function AppShell({
   unread?: number;
 }) {
   const pathname = usePathname() || "/";
+  const { data: session } = useSession();
+  const userName = session?.user?.name ?? "訪客";
+  const userImage = session?.user?.image;
+  const initials = userName.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 
   // ── rail 收合：localStorage('polaris-rail') 持久化（對應原型 app.jsx）──
   const [collapsed, setCollapsed] = useState(false);
@@ -127,9 +132,12 @@ export function AppShell({
             href="/settings"
             className={"user-card" + (isActive(pathname, "/settings") ? " active" : "")}
           >
-            <div className="avatar">JC</div>
+            {userImage
+              ? <img src={userImage} alt={userName} style={{ width: 32, height: 32, borderRadius: "50%" }} />
+              : <div className="avatar">{initials}</div>
+            }
             <div className="uc-info">
-              <div className="user-name">Jing Chen</div>
+              <div className="user-name">{userName}</div>
               <div className="user-role">分析師 · R7</div>
             </div>
             <span className="uc-gear">

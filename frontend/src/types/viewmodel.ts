@@ -62,6 +62,7 @@ export interface CitationTrackerVM {
 
 export interface AskVM {
   query: string;
+  compliance_status: string;
   kpis: KpiVM[];
   summary: SummaryItemVM[];
   chart: ChartPointVM[];

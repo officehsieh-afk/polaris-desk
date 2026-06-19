@@ -1,6 +1,6 @@
 ﻿"use client";
-import { useState } from "react";
 import { useTheme } from "next-themes";
+import { signIn, signOut, useSession } from "next-auth/react";
 import { Icon } from "@/components/ui/Icon";
 import { USE_MOCK } from "@/lib/config";
 
@@ -17,9 +17,12 @@ function GoogleMark() {
 
 export default function SettingsPage() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const { data: session } = useSession();
   const isDark = resolvedTheme === "dark";
+
+  const name = session?.user?.name ?? "訪客";
+  const email = session?.user?.email ?? "";
+  const initials = name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="page-scroll">
@@ -31,26 +34,25 @@ export default function SettingsPage() {
         </div>
         <div className="set-body">
           <div className="set-account">
-            <div className="avatar" style={{width:44,height:44,fontSize:20}}>JC</div>
+            {session?.user?.image
+              ? <img src={session.user.image} alt={name} style={{width:44,height:44,borderRadius:"50%"}} />
+              : <div className="avatar" style={{width:44,height:44,fontSize:20}}>{initials}</div>
+            }
             <div style={{flex:1}}>
-              <div className="user-name" style={{fontSize:19,color:"rgb(var(--foreground))"}}>Jing Chen</div>
-              <div className="set-mail font-mono">jing.chen@polaris.dev</div>
+              <div className="user-name" style={{fontSize:19,color:"rgb(var(--foreground))"}}>{name}</div>
+              {email && <div className="set-mail font-mono">{email}</div>}
             </div>
-            <span className="tag ok"><span className="tdot"/>已登入</span>
+            <span className={`tag ${session ? "ok" : "muted"}`}>
+              <span className="tdot"/>{session ? "已登入" : "未登入"}
+            </span>
           </div>
           <div className="set-label">以郵箱第三方登入 / 綁定</div>
           <div className="set-sso">
-            <button className="sso-btn"><GoogleMark/><span>使用 Google 帳號繼續</span></button>
+            {session
+              ? <button className="sso-btn" onClick={() => signOut()}><GoogleMark/><span>登出 Google 帳號</span></button>
+              : <button className="sso-btn" onClick={() => signIn("google")}><GoogleMark/><span>使用 Google 帳號繼續</span></button>
+            }
           </div>
-          <div className="set-divider"><span>或以工作郵箱登入</span></div>
-          {sent ? (
-            <div className="set-sent"><Icon name="check" size={16}/>已寄出登入連結至 <b>{email}</b>，請至信箱點擊完成驗證。</div>
-          ) : (
-            <form className="set-mailrow" onSubmit={e=>{e.preventDefault();if(email)setSent(true);}}>
-              <div className="set-input"><Icon name="mail" size={16}/><input type="email" required placeholder="name@company.com" value={email} onChange={e=>setEmail(e.target.value)}/></div>
-              <button className="btn primary" type="submit">寄送登入連結</button>
-            </form>
-          )}
           <div className="set-label" style={{marginTop:22}}>偏好設定</div>
           <div className="set-pref">
             <div className="pref-row">
@@ -62,7 +64,7 @@ export default function SettingsPage() {
               <span className="tag muted font-mono">USE_MOCK={USE_MOCK?"true":"false"}</span>
             </div>
           </div>
-          <button className="set-logout"><Icon name="logout" size={16}/>登出帳號</button>
+          {session && <button className="set-logout" onClick={() => signOut()}><Icon name="logout" size={16}/>登出帳號</button>}
         </div>
       </div>
     </div>

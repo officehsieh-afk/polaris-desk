@@ -54,13 +54,27 @@ export interface ReactStepRaw {
   tool: boolean;
 }
 
+export interface AskCitationRaw {
+  source_id: string;
+  snippet: string;
+  origin: string;
+  company: string | null;
+}
+
+export interface NodeTraceRaw {
+  node_name: string;
+  status: "ok" | "error" | "skipped";
+  input_keys: string[];
+  output_keys: string[];
+  error_message: string | null;
+  elapsed_ms: number;
+}
+
 export interface AskResponse {
-  query: string;
-  kpis: KpiRaw[];
-  summary: SummaryItemRaw[];
-  chart: ChartPointRaw[];
-  react_steps: ReactStepRaw[];
-  citations: CitationRaw[];
+  answer: string;
+  compliance_status: string;
+  citations: AskCitationRaw[];
+  trace: NodeTraceRaw[];
 }
 
 export interface CompanyRaw {
@@ -268,4 +282,20 @@ export interface ResearchResponse {
   react_steps: ResearchReActStepRaw[];
   status: string;
   compliance_status: string;
+}
+
+// ── GET /chunk/{source_id} 回應（文件 5_引用追蹤器契約）──
+export interface ChunkRaw {
+  source_id: string;
+  title: string;
+  doc_type: string;
+  kind_label: string;
+  ticker: string;
+  fiscal_period: string;
+  published_at: string;
+  page: string | null;
+  trust: "high" | "mid";
+  content: string;
+  highlight: string;
+  hl_tokens?: string[];
 }

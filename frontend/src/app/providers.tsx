@@ -8,17 +8,20 @@
 //   • enableSystem=false     → 原型不跟系統色，只在亮/暗間切
 // ============================================================
 import { ThemeProvider } from "next-themes";
+import { SessionProvider } from "next-auth/react";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider
-      attribute="data-theme"
-      defaultTheme="light"
-      enableSystem={false}
-      storageKey="polaris-theme"
-      disableTransitionOnChange
-    >
-      {children}
-    </ThemeProvider>
+    <SessionProvider>
+      <ThemeProvider
+        attribute="data-theme"
+        defaultTheme="light"
+        enableSystem={false}
+        storageKey="polaris-theme"
+        disableTransitionOnChange
+      >
+        {children}
+      </ThemeProvider>
+    </SessionProvider>
   );
 }
