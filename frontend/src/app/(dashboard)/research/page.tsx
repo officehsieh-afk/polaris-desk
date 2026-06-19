@@ -298,6 +298,10 @@ export default function ResearchPage() {
               </div>
             ) : (
               <>
+                {displayData?.compliance_status === "blocked" ? (
+                  <ComplianceBanner message={summary[0]?.text ?? "因合規考量，本系統無法回答此類查詢。"} />
+                ) : (
+                <>
                 <ComplianceBanner/>
                 {(isMutating || isLoadingFinancials) ? <KpiSkeleton/> : (
                   (kpis.length > 0 || financialKpis.length > 0) && (
@@ -341,9 +345,9 @@ export default function ResearchPage() {
                       <span className="panel-meta">財務指標</span>
                     </div>
                     <div className="panel-body">
-                      {(data?.chart?.length ?? 0) > 0
+                      {(displayData?.chart?.length ?? 0) > 0
                         ? <>
-                            <Chart data={data!.chart}/>
+                            <Chart data={displayData!.chart}/>
                             <div className="chart-foot">
                               <span>單季毛利率（來源：財務資料庫）</span>
                             </div>
@@ -357,6 +361,8 @@ export default function ResearchPage() {
                     </div>
                   </div>
                 </div>
+              </>
+            )}
               </>
             )}
             <div className="actions">
