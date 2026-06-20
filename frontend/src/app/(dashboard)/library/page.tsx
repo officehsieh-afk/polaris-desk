@@ -36,7 +36,7 @@ export default function LibraryPage() {
     <div className="page-scroll">
       <div className="page narrow">
         <div className="page-head">
-          <div className="page-eyebrow">資料庫 · /library</div>
+          <div className="page-eyebrow">資料庫 · library</div>
           <h1 className="page-title">資料庫</h1>
           <p className="page-desc">管理已建索引的財報、法說會逐字稿與績效報告。</p>
         </div>

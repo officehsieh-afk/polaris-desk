@@ -11,6 +11,31 @@
 > 前端 URL `https://polaris-web-14326813937.asia-east1.run.app`
 > （Cloud Run URL 由「服務名-專案號.region.run.app」決定，部署前即可預測 → OAuth 可先填）。
 
+---
+
+## 📊 現況與下一步（owner 已標；更新 2026-06-20）
+
+**後端已完成並驗證（R2 / ops）**：
+- ✅ **① OAuth client**（Console）：Web client 已建，JS origin + redirect 含 localhost 與 `polaris-web`。
+- ✅ **② Firestore**：`(default)` DB @ asia-east1 + SA `polaris-run` `roles/datastore.user`。
+- ✅ **③ polaris-api env + image**：`GOOGLE_CLIENT_ID` + `POLARIS_CORS_ORIGINS` 已設；從 main 重建 image
+  （rev `polaris-api-00011`，含 PR #119 的 CORS env 修正）。煙測：anon 401 / CORS / `/health` / 路由皆 OK。
+- ✅ **Firestore round-trip de-risk**（2026-06-20）：真 `UserStore` 對 `(default)` DB 寫讀全 PASS。
+
+**下一步（critical path：3 → 4）**：
+
+| # | 待辦 | Owner | 卡關於 |
+|---|---|---|---|
+| 1 | 確認 7 個帳號都在同意畫面 **Test users**（尤其 `Arronyang0416@gmail.com`）；少加會被 Google 擋 | **PM/owner（Wayne）** | 步驟 4 登入 |
+| 2 | 機密進 **Secret Manager**：`GOOGLE_CLIENT_SECRET` + `NEXTAUTH_SECRET`，授 `polaris-run` secretAccessor（見 ④） | **PM/owner（Wayne）** | 步驟 3 |
+| 3 | **部署 `polaris-web`**（Next.js+NextAuth）到 Cloud Run（服務名/region 須對；見 ④） | **R7** | 步驟 4 |
+| 4 | **端到端驗收 ⑤**（真登入 → /history 還原 → 跨帳號隔離 → 匿名降級） | **R7 執行 / Wayne 簽核**（R2 看 Firestore 寫入） | — |
+| 5 | 關 issue #113 | **Wayne** | — |
+
+> 之後（非現在）：OAuth app 由 Testing 轉「已發布」——僅當 >100 users 或要對外公開時才需，owner = PM。
+
+---
+
 先設好變數（其餘指令會用到）：
 ```bash
 export PROJECT=polaris-desk-team

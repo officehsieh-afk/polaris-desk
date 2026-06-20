@@ -33,7 +33,7 @@ export default function HelpPage() {
     <div className="page-scroll">
       <div className="page">
         <div className="page-head">
-          <div className="page-eyebrow">說明中心 · /help</div>
+          <div className="page-eyebrow">說明中心 · help</div>
           <h1 className="page-title">說明中心</h1>
           <p className="page-desc">了解 Polaris Desk 各功能模組的使用方式。</p>
         </div>

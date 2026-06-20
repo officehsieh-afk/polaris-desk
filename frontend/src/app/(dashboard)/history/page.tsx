@@ -60,7 +60,7 @@ export default function HistoryPage() {
     <div className="page-scroll">
       <div className="page narrow">
         <div className="page-head">
-          <div className="page-eyebrow">對話紀錄 · /history</div>
+          <div className="page-eyebrow">對話紀錄 · history</div>
           <h1 className="page-title">對話紀錄</h1>
           <p className="page-desc">研究助理與同業比較的歷史紀錄。</p>
         </div>

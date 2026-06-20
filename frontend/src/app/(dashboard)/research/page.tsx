@@ -1,5 +1,5 @@
 ﻿"use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { mutate } from "swr";
 import { Icon } from "@/components/ui/Icon";
@@ -23,9 +23,10 @@ import { contraAlertStore, type ContraAlert } from "@/lib/contraAlertStore";
 import type { KpiVM } from "@/types/viewmodel";
 import { historyStore, extractTickers } from "@/lib/historyStore";
 import { api } from "@/lib/api";
+import { API_BASE } from "@/lib/config";
 import { toast } from "sonner";
+import { ResearchTour } from "@/components/polaris/ResearchTour";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 const PHASES = ["理解查詢意圖","檢索文件庫","重排序候選","計算 + 交叉驗證","生成摘要","合規檢查"];
 const PRESETS = ["台積電 2026Q1 法說會營運重點","聯發科 AI 邊緣運算佈局","台股半導體庫存週期"];
 
@@ -94,7 +95,7 @@ function Chart({ data }: { data: Array<{label:string;value:number}> }) {
   );
 }
 
-export default function ResearchPage() {
+function ResearchPageInner() {
   const { trigger, data, isMutating } = useResearch();
   const { data: alerts } = useAlerts();
   const rs = useReadStore();
@@ -254,6 +255,22 @@ export default function ResearchPage() {
     if (intervalRef.current) clearInterval(intervalRef.current);
   }, []);
 
+  const handleTourRunSample = () => {
+    const sample = "台積電 2026Q1 法說會重點";
+    setQuery(sample);
+    run(sample);
+  };
+
+  const handleTourReset = () => {
+    setQuery("");
+    setHasQueried(false);
+    setPhase("idle");
+    setProgress(0);
+    setRestoredData(undefined);
+    setRestoredAt(null);
+    contraAlertStore.clear();
+  };
+
   const running = phase==="running";
   const total = reactSteps.length || 1;
   const curPhase = running ? PHASES[Math.min(Math.floor((stepN / total) * PHASES.length), PHASES.length - 1)] : null;
@@ -291,7 +308,7 @@ export default function ResearchPage() {
         <div className={"page research-layout" + (ctxOpen ? "" : " ctx-collapsed")}>
           <div className="rcol-main">
             <div className="page-head">
-              <div className="page-eyebrow">研究助理 · /research</div>
+              <div className="page-eyebrow">研究助理 · research</div>
               <h1 className="page-title">研究分析</h1>
             </div>
             {restoredData && (
@@ -494,7 +511,21 @@ export default function ResearchPage() {
           onClose={()=>setShowReport(false)}
         />
       )}
+      <ResearchTour
+        onRunSample={handleTourRunSample}
+        onReset={handleTourReset}
+        hasResults={!!displayData}
+      />
       <DocViewer doc={openDoc} onClose={()=>setOpenDoc(null)}/>
     </>
+  );
+}
+
+// useSearchParams() 需包在 Suspense 內，否則 next build 靜態匯出 /research 會 bail-out。
+export default function ResearchPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResearchPageInner />
+    </Suspense>
   );
 }

@@ -18,6 +18,7 @@ import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { Toaster } from "@/components/ui/sonner";
+import { OnboardingModal } from "@/components/polaris/OnboardingModal";
 
 type NavItem = { href: string; label: string; icon: IconName; badge?: boolean };
 
@@ -138,7 +139,6 @@ export function AppShell({
             }
             <div className="uc-info">
               <div className="user-name">{userName}</div>
-              <div className="user-role">分析師 · R7</div>
             </div>
             <span className="uc-gear">
               <Icon name="settings" size={16} />
@@ -157,8 +157,8 @@ export function AppShell({
           <Icon name="panelLeft" size={18} />
         </button>
         <div className="crumb">
-          <span>Polaris</span>
-          <Icon name="chevR" size={13} />
+          <span className="crumb-brand">Polaris</span>
+          <Icon name="chevR" size={13} className="crumb-brand" />
           <b>{CRUMB[pathname] ?? ""}</b>
         </div>
         <div className="topbar-right">
@@ -172,6 +172,7 @@ export function AppShell({
       <main className="main">{children}</main>
 
       <Toaster position="bottom-right" duration={2500} />
+      <OnboardingModal />
 
       {/* ── 手機底部導覽：<1230px 由 polaris.css 自動顯示（rail 同時隱藏）── */}
       <nav className="mobnav">
